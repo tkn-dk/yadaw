@@ -1,4 +1,4 @@
-package dk.yadaw.recorder;
+package dk.yadaw.audio;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;

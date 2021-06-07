@@ -9,9 +9,10 @@ import dk.yadaw.widgets.VUMeter;
 
 public class Yadaw extends Thread {
 	VUMeter vu;
+	JFrame mainFrame;
 	
 	public void createGui() {
-		JFrame mainFrame = new JFrame( "Yadaw" );
+		mainFrame = new JFrame( "Yadaw" );
 		mainFrame.setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE );
 		mainFrame.setSize(300, 300);
 		
@@ -34,11 +35,13 @@ public class Yadaw extends Thread {
 				i = 0;
 			}
 			try {
-				Thread.sleep( 200 );
+				Thread.sleep( 10 );
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
 		}
+		vu.setVal( 0 );
+		mainFrame.
 	}
 	
 	@Override

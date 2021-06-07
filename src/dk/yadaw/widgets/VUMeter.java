@@ -45,7 +45,6 @@ public class VUMeter extends JPanel {
 			public void timerEvent() {
 				peakVal = 0;
 				repaint( xrect, vuMeterSpace, ledWidth, height);
-				System.out.println( "timerEvent");
 			}
 		};
 		

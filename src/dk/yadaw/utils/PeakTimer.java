@@ -10,7 +10,7 @@ public class PeakTimer extends Thread {
 	public PeakTimer() {
 		stopped = false;
 		timerIsSet = false;
-		sleepTime = 1000000;
+		sleepTime = 10000000;
 		start();
 	}
 
@@ -23,6 +23,9 @@ public class PeakTimer extends Thread {
 					timerIsSet = false;
 					eventIsProcessing = true;
 					timerEvent();
+				}
+				else {
+					sleepTime = 10000000;
 				}
 			} catch (InterruptedException e) {
 			}
@@ -45,6 +48,7 @@ public class PeakTimer extends Thread {
 	
 	public void stopTimer() {
 		stopped = true;
+		timerIsSet = false;
 		interrupt();
 	}
 }
