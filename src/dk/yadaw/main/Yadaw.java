@@ -41,7 +41,6 @@ public class Yadaw extends Thread {
 			}
 		}
 		vu.setVal( 0 );
-		mainFrame.
 	}
 	
 	@Override
