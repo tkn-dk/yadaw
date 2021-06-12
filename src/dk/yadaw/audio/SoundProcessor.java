@@ -22,11 +22,11 @@ public abstract class SoundProcessor {
 	}
 	
 	/**
-	 * The sound processor should process the next input stream buffers, and add output to output stream.
+	 * The sound processor should process the next input stream buffer, and add output to output stream.
 	 * Input streams may contain more samples than just the next to process - e.g. streaming a track from 
 	 * an input file could fill buffers ahead. Processing samples must be done synchronous with output, 
 	 * also, any VU meter may be updated from call to process.
-	 * @param samplePosition	Current sampleposition in number of samples since processing was started.
+	 * @param samplePosition	Current sample position in number of samples since processing was started.
 	 * @param syncBuffer		Copy of sample data being 
 	 */
 	public abstract void process( long samplePosition );
