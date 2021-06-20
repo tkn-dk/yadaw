@@ -14,7 +14,8 @@ public class Asio {
 	private boolean isStarted;
 	private double samplerate;
 	private int bufferSize;
-	private int latency;
+	private int outputLatency;
+	private int inputLatency;
 	private int nofInputs;
 	private int nofOutputs;
 	private int nofActivatedInputs;
@@ -57,7 +58,8 @@ public class Asio {
 		
 		samplerate = asioGetSamplerate();
 		bufferSize = asioGetBufferSize();
-		latency = asioGetLatency();
+		outputLatency = asioGetOutputLatency();
+		inputLatency = asioGetInputLatency();
 		nofInputs = asioGetAvailableInputs();
 		nofOutputs = asioGetAvailableOutputs();
 		nofActivatedOutputs = 0;
@@ -73,11 +75,19 @@ public class Asio {
 	}
 	
 	/**
-	 * Get system latency.
-	 * @return	latency in samples.
+	 * Get output latency.
+	 * @return	output latency in samples.
 	 */
-	public int getLatency() {
-		return latency;
+	public int getOutputLatency() {
+		return outputLatency;
+	}
+	
+	/**
+	 * Get input latency
+	 * @return input latency in samples
+	 */
+	public int getInputLatency() {
+		return inputLatency;
 	}
 	
 	public int getNofInputs() {
@@ -151,7 +161,8 @@ public class Asio {
 	private native boolean asioInit();
 	private native double asioGetSamplerate();
 	private native int asioGetBufferSize();
-	private native int asioGetLatency();
+	private native int asioGetOutputLatency();
+	private native int asioGetInputLatency();
 	private native int asioGetAvailableInputs();
 	private native int asioGetAvailableOutputs();
 	private native void asioClearUsedInputs();

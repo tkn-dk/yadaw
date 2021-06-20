@@ -1,0 +1,10 @@
+cmake_minimum_required (VERSION 3.10)
+
+project (asiojni)
+include_directories( $ENV{JAVA_HOME}/include )
+include_directories( $ENV{JAVA_HOME}/include/win32 )
+include_directories( asiosdk/host asiosdk/common asiosdk/host/pc )
+add_library(asiojni SHARED asiojni.cpp )
+target_sources( asiojni PRIVATE asiosdk/common/asio.cpp )
+target_sources( asiojni PRIVATE asiosdk/host/asiodrivers.cpp asiosdk/host/pc/asiolist.cpp )
+target_sources( asiojni PRIVATE asiosdk/host/pc/asiolist.cpp )
