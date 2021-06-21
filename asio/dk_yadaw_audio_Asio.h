@@ -97,34 +97,26 @@ JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioGetAvailableOutputs
 
 /*
  * Class:     dk_yadaw_audio_Asio
- * Method:    asioClearUsedInputs
+ * Method:    asioClearArmedChannels
  * Signature: ()V
  */
-JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioClearUsedInputs
+JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioClearArmedChannels
   (JNIEnv *, jobject);
 
 /*
  * Class:     dk_yadaw_audio_Asio
- * Method:    asioClearUsedOutputs
- * Signature: ()V
- */
-JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioClearUsedOutputs
-  (JNIEnv *, jobject);
-
-/*
- * Class:     dk_yadaw_audio_Asio
- * Method:    asioActivateInput
+ * Method:    asioArmInput
  * Signature: (I)V
  */
-JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioActivateInput
+JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioArmInput
   (JNIEnv *, jobject, jint);
 
 /*
  * Class:     dk_yadaw_audio_Asio
- * Method:    asioActivateOutput
+ * Method:    asioArmOutput
  * Signature: (I)V
  */
-JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioActivateOutput
+JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioArmOutput
   (JNIEnv *, jobject, jint);
 
 /*
@@ -137,18 +129,26 @@ JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioPrepBuffers
 
 /*
  * Class:     dk_yadaw_audio_Asio
- * Method:    asioExchangeBuffers
- * Signature: ([I)[I
+ * Method:    asioSetOutputSamples
+ * Signature: ([I)V
  */
-JNIEXPORT jintArray JNICALL Java_dk_yadaw_audio_Asio_asioExchangeBuffers
+JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioSetOutputSamples
   (JNIEnv *, jobject, jintArray);
 
 /*
  * Class:     dk_yadaw_audio_Asio
- * Method:    asioStart
- * Signature: ()V
+ * Method:    asioGetInputSamples
+ * Signature: ()[I
  */
-JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioStart
+JNIEXPORT jintArray JNICALL Java_dk_yadaw_audio_Asio_asioGetInputSamples
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     dk_yadaw_audio_Asio
+ * Method:    asioStart
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioStart
   (JNIEnv *, jobject);
 
 /*

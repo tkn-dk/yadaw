@@ -1,7 +1,6 @@
 package dk.yadaw.audio;
 
 import java.util.Collection;
-import java.util.Set;
 import java.util.Vector;
 
 /**
@@ -110,24 +109,20 @@ public class Asio {
 	 * Activates an input so its input samples will be added to the buffer. 
 	 * @param ch	Channel num - zero based.
 	 */
-	public void activateInput( int ch ) {
-		asioActivateInput( ch );
+	public void armInput( int ch ) {
+		asioArmInput( ch );
 	}
 	
 	/**
 	 * Activates an output, data must be added to outputbuffer.
 	 * @param ch
 	 */
-	public void activateOutput( int ch ) {
-		asioActivateOutput( ch );
+	public void armOutput( int ch ) {
+		asioArmOutput( ch );
 	}
 	
-	public void deactivateInputs() {
-		asioClearUsedInputs();
-	}
-	
-	public void deactivateOutputs() {
-		asioClearUsedOutputs();
+	public void clearArmedChannels() {
+		asioClearArmedChannels();
 	}
 	
 	/**
@@ -143,8 +138,9 @@ public class Asio {
 		
 		synchronized( this ) {
 			try {
+				asioSetOutputSamples( outputBuffer );
 				wait();
-				return asioExchangeBuffers( outputBuffer );
+				return asioGetInputSamples();
 			}
 			catch( InterruptedException e ) {
 				asioStop();
@@ -165,12 +161,12 @@ public class Asio {
 	private native int asioGetInputLatency();
 	private native int asioGetAvailableInputs();
 	private native int asioGetAvailableOutputs();
-	private native void asioClearUsedInputs();
-	private native void asioClearUsedOutputs();
-	private native void asioActivateInput( int ch );
-	private native void asioActivateOutput( int ch );
+	private native void asioClearArmedChannels();
+	private native void asioArmInput( int ch );
+	private native void asioArmOutput( int ch );
 	private native void asioPrepBuffers();
-	private native int[] asioExchangeBuffers( int[] outputSamples );
-	private native void asioStart();
+	private native void asioSetOutputSamples( int[] outputSamples );
+	private native int[] asioGetInputSamples();
+	private native int asioStart();
 	private native void asioStop();
 }

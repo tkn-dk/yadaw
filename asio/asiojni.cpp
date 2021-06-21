@@ -15,21 +15,8 @@ struct AsioContext
 {
 	AsioDrivers *asioDrivers;
 	LPASIODRVSTRUCT asioDrvList;
-	bool record;
-	bool playing;
+	const char *driverName;
 	LONG channel;
-	char *fileName;
-	char *driverName;
-	BYTE *recordFileBuffer;
-	BYTE *playbackBuffer[2];
-	DWORD playbackBufferRead[2];
-	DWORD playbackBufferSize;
-	DWORD playbackBufferIndex;
-	DWORD playbackOut;
-	bool playbackEOF;
-	bool playbackFinished;
-	HANDLE recordFileHandle;
-	HANDLE playbackFileHandle;
 	LPASIODRVSTRUCT theOne;
 	ASIODriverInfo driverInfo;
 	ASIOSampleRate sampleRate;
@@ -40,6 +27,8 @@ struct AsioContext
 	LONG inputLatency;
 	unsigned long long armedInputsMask;
 	unsigned long long armedOutputsMask;
+	LONG nofArmedInputs;
+	LONG nofArmedOutputs;
 	double outputLatencyMs;
 	double inputLatencyMs;
 	ASIOChannelInfo **inputChannelsInfo;
@@ -47,12 +36,21 @@ struct AsioContext
 	ASIOBufferInfo *buffers;
 	ASIOCallbacks callBacks;
 	ASIOSamples lastSamplePos;
+	long *exchangedInputSamples;
+	long *exchangedOutputSamples;
 };
 
 AsioContext asioCtx = {0};
 
 LPASIODRVSTRUCT findDriver( AsioDrivers *adrv, const string asioDriverName );
+void prepBuffers();
+void prepCallbacks();
 
+/* ASIO callback functions  */
+void bufferSwitch(long doubleBufferIndex, ASIOBool directProcess);
+void sampleRateDidChange(ASIOSampleRate sRate);
+long asioMessage(long selector, long value, void* message, double* opt);
+ASIOTime* bufferSwitchTimeInfo(ASIOTime* params, long doubleBufferIndex, ASIOBool directProcess);
 
 BOOL WINAPI DllMain(
     HINSTANCE hinstDLL,  // handle to DLL module
@@ -63,6 +61,7 @@ BOOL WINAPI DllMain(
     switch( fdwReason )
     {
         case DLL_PROCESS_ATTACH:
+        	printf( "AsioJNI attach\n");
         	asioCtx.asioDrivers = new AsioDrivers();
             break;
 
@@ -75,6 +74,7 @@ BOOL WINAPI DllMain(
             break;
 
         case DLL_PROCESS_DETACH:
+        	printf( "AsioJNI unload\n" );
         	delete asioCtx.asioDrivers;
             break;
     }
@@ -137,6 +137,17 @@ JNIEXPORT jboolean JNICALL Java_dk_yadaw_audio_Asio_asioInit(JNIEnv *env, jobjec
 		ASIOGetChannels(&asioCtx.numInput, &asioCtx.numOutput );
 		result = JNI_TRUE;
 	}
+
+	if( asioCtx.exchangedInputSamples )
+	{
+		delete[] asioCtx.exchangedInputSamples;
+	}
+
+	if( asioCtx.exchangedOutputSamples )
+	{
+		delete[] asioCtx.exchangedOutputSamples;
+	}
+
 	return result;
 }
 
@@ -169,108 +180,62 @@ JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioGetAvailableOutputs(JNIEnv *
 	return asioCtx.numOutput;
 }
 
-JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioClearUsedInputs(JNIEnv *env, jobject thisobj )
+JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioClearArmedChannels(JNIEnv *env, jobject thisobj )
 {
+	delete[] asioCtx.buffers;
+	delete[] asioCtx.exchangedInputSamples;
+	delete[] asioCtx.exchangedOutputSamples;
 	asioCtx.armedInputsMask = 0;
-	// TODO: Delete assigned buffers
+	asioCtx.buffers = NULL;
+	asioCtx.exchangedInputSamples = NULL;
+	asioCtx.exchangedOutputSamples = NULL;
 }
 
-JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioClearUsedOutputs(JNIEnv *env, jobject thisobj )
-{
-	asioCtx.armedOutputsMask = 0;
-	// TODO Delete assigned output buffers
-}
-
-JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioActivateInput  (JNIEnv *env, jobject thisobj, jint channel )
+JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioArmInput  (JNIEnv *env, jobject thisobj, jint channel )
 {
 	asioCtx.armedInputsMask |= ( 1 << channel );
 }
 
-JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioActivateOutput(JNIEnv *env, jobject thisobj, jint channel )
+JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioArmOutput(JNIEnv *env, jobject thisobj, jint channel )
 {
 	asioCtx.armedOutputsMask |= ( 1 << channel );
 }
 
 JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioPrepBuffers(JNIEnv *, jobject)
 {
-	int nofArmedOutputs = 0;
-	int nofArmedInputs = 0;
-	unsigned long long mask = 1;
-	while ( mask != 0 )
-	{
-		if( asioCtx.armedInputsMask & mask )
-		{
-			nofArmedInputs++;
-		}
-
-		if( asioCtx.armedOutputsMask & mask )
-		{
-			nofArmedOutputs++;
-		}
-
-		mask = ( mask << 1 );
-	}
-
-	int numChannels = nofArmedInputs + nofArmedOutputs;
-	int bufIndex = 0;
-	asioCtx.buffers = new ASIOBufferInfo[numChannels];
-	int n = 0;
-	mask = 1;
-	while( mask != 0 )
-	{
-		if( asioCtx.armedInputsMask & mask )
-		{
-			asioCtx.buffers[bufIndex] = {0};
-			asioCtx.buffers[bufIndex].channelNum = n;
-			asioCtx.buffers[bufIndex].isInput = ASIOTrue;
-			bufIndex++;
-		}
-
-		mask = ( mask << 1 );
-		n++;
-	}
-
-	n = 0;
-	mask = 1;
-	while( mask != 0 )
-	{
-		if( asioCtx.armedOutputsMask & mask )
-		{
-			asioCtx.buffers[bufIndex] = {0};
-			asioCtx.buffers[bufIndex].channelNum = n;
-			asioCtx.buffers[bufIndex].isInput = ASIOFalse;
-			bufIndex++;
-		}
-
-		mask = ( mask << 1 );
-		n++;
-	}
+	prepBuffers();
+	prepCallbacks();
+	ASIOError err = ASIOCreateBuffers( asioCtx.buffers, asioCtx.numInput, asioCtx.bufferSize, &asioCtx.callBacks );
 }
 
-JNIEXPORT jintArray JNICALL Java_dk_yadaw_audio_Asio_asioExchangeBuffers(JNIEnv *, jobject, jintArray)
+JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioSetOutputSamples(JNIEnv *env, jobject thisobj, jintArray samples )
+{
+	jint *outputSamples = env->GetIntArrayElements(samples, NULL );
+
+	memcpy( asioCtx.exchangedOutputSamples, outputSamples, asioCtx.bufferSize * asioCtx.nofArmedOutputs * sizeof( int ));
+	env->ReleaseIntArrayElements(samples, outputSamples, JNI_ABORT );
+}
+
+JNIEXPORT jintArray JNICALL Java_dk_yadaw_audio_Asio_asioGetInputSamples(JNIEnv *env, jobject thisobj )
 {
 	return NULL;
 }
 
-JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioStart(JNIEnv *, jobject)
+JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioStart(JNIEnv *, jobject)
 {
-	ASIOStart();
-
+	jint result = -1;
+	if( asioCtx.buffers )
+	{
+		ASIOStart();
+		result = 0;
+	}
+	return result;
 }
 
 JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioStop(JNIEnv *, jobject)
 {
 	ASIOStop();
 }
-
-
-/* ASIO callback functions  */
-void bufferSwitch(long doubleBufferIndex, ASIOBool directProcess);
-void sampleRateDidChange(ASIOSampleRate sRate);
-long asioMessage(long selector, long value, void* message, double* opt);
-ASIOTime* bufferSwitchTimeInfo(ASIOTime* params, long doubleBufferIndex, ASIOBool directProcess);
-
-void fillPlaybackBuffer( DWORD pbufIndex );
 
 void bufferSwitch(long doubleBufferIndex, ASIOBool directProcess)
 {
@@ -323,64 +288,8 @@ ASIOTime* bufferSwitchTimeInfo(ASIOTime* params, long doubleBufferIndex, ASIOBoo
 	DWORD bytesToWrite = 3 * asioCtx.bufferSize;
 	double timePos  = params->timeInfo.samplePosition.lo / asioCtx.sampleRate;
 
-	if( asioCtx.recordFileHandle )
-	{
-		int fileBufIndex = 0;
-		for( int i = 0; i < asioCtx.bufferSize; i++ )
-		{
-			unsigned int sample = *( ( unsigned int *)asioCtx.buffers[asioCtx.channel].buffers[doubleBufferIndex] + i );
-			asioCtx.recordFileBuffer[fileBufIndex++] = ( BYTE )( sample >> 24 );
-			asioCtx.recordFileBuffer[fileBufIndex++] = ( BYTE )( sample >> 16 );
-			asioCtx.recordFileBuffer[fileBufIndex++] = ( BYTE )( sample >> 8 );
-		}
-		printf( "\rRecording: %8.3f", timePos );
-		fflush( stdout );
-		WriteFile( asioCtx.recordFileHandle, asioCtx.recordFileBuffer, bytesToWrite, &byteWritten, NULL );
-	}
-	else if( asioCtx.playbackFileHandle && !asioCtx.playbackFinished )
-	{
-		unsigned int sample;
-		for( int i = 0; i < asioCtx.bufferSize; i++ )
-		{
-			sample = 0;
-			for( int s = 0; s < 3; s++  )
-			{
-				sample = ( sample << 8 ) + asioCtx.playbackBuffer[asioCtx.playbackBufferIndex][asioCtx.playbackOut++];
-			}
-
-			sample = sample << 8;
-			*( ( unsigned int *)asioCtx.buffers[asioCtx.channel].buffers[doubleBufferIndex] + i ) = sample;
-
-
-			if( asioCtx.playbackOut >= asioCtx.playbackBufferRead[asioCtx.playbackBufferIndex] )
-			{
-				if( asioCtx.playbackEOF )
-				{
-					printf( "\nPlayback finished." );
-					fflush( stdout );
-					asioCtx.playbackFinished = true;
-					ASIOStop();
-					break;
-				}
-				else
-				{
-					asioCtx.playbackOut = 0;
-					fillPlaybackBuffer( asioCtx.playbackBufferIndex );
-					asioCtx.playbackBufferIndex = ( asioCtx.playbackBufferIndex + 1 ) & 1 ;
-				}
-			}
-			ASIOOutputReady();
-		}
-		//printf( "\rPlayback: %8.3f", timePos );
-		//fflush( stdout );
-	}
 	asioCtx.lastSamplePos = params->timeInfo.samplePosition;
 	return params;
-}
-
-void printChannelInfo( ASIOChannelInfo *ainfo )
-{
-	printf( "\n  %i: %s. Group: %i  Type: %i", ainfo->channel, ainfo->name, ainfo->channelGroup, ainfo->type );
 }
 
 LPASIODRVSTRUCT findDriver( AsioDrivers *adrv, const string asioDriverName )
@@ -428,257 +337,83 @@ bool getChannelInfo( AsioContext *ctx )
 	return true;
 }
 
-bool getAsioInfo( AsioContext *ctx )
+void prepBuffers()
 {
-	ctx->driverInfo = {0};
-	ctx->driverInfo.asioVersion = 2;
-	ASIOError err = ASIOInit( &ctx->driverInfo );
-	if( err != ASE_OK )
-	{
-		return false;
-	}
-	else
-	{
-		const ASIOSampleRate setRate = 48000.0;
-		ASIOSetSampleRate( setRate );
-		ASIOGetSampleRate( &ctx->sampleRate );
-		ASIOGetChannels(&ctx->numInput, &ctx->numOutput );
-		ASIOGetLatencies( &ctx->inputLatency, &ctx->outputLatency );
-		ctx->inputLatencyMs = ( 1000.0 * ctx->inputLatency ) / ctx->sampleRate;
-		ctx->outputLatencyMs = ( 1000.0 * ctx->outputLatency ) / ctx->sampleRate;
 
-		LONG minSize;
-		LONG maxSize;
-		LONG preferredSize;
-		LONG granularity;
-		err = ASIOGetBufferSize(&minSize, &maxSize, &preferredSize, &granularity);
-		ctx->bufferSize = preferredSize;
+	int nofArmedOutputs = 0;
+	int nofArmedInputs = 0;
+	unsigned long long mask = 1;
+	while ( mask != 0 )
+	{
+		if( asioCtx.armedInputsMask & mask )
+		{
+			nofArmedInputs++;
+		}
 
-		getChannelInfo( ctx );
+		if( asioCtx.armedOutputsMask & mask )
+		{
+			nofArmedOutputs++;
+		}
+
+		mask = ( mask << 1 );
 	}
-	return true;
+
+	int numChannels = nofArmedInputs + nofArmedOutputs;
+
+	int bufIndex = 0;
+	asioCtx.buffers = new ASIOBufferInfo[numChannels];
+	int n = 0;
+	mask = 1;
+	while( mask != 0 )
+	{
+		if( asioCtx.armedInputsMask & mask )
+		{
+			asioCtx.buffers[bufIndex] = {0};
+			asioCtx.buffers[bufIndex].channelNum = n;
+			asioCtx.buffers[bufIndex].isInput = ASIOTrue;
+			bufIndex++;
+		}
+
+		mask = ( mask << 1 );
+		n++;
+	}
+
+	n = 0;
+	mask = 1;
+	while( mask != 0 )
+	{
+		if( asioCtx.armedOutputsMask & mask )
+		{
+			asioCtx.buffers[bufIndex] = {0};
+			asioCtx.buffers[bufIndex].channelNum = n;
+			asioCtx.buffers[bufIndex].isInput = ASIOFalse;
+			bufIndex++;
+		}
+
+		mask = ( mask << 1 );
+		n++;
+	}
+
+	asioCtx.nofArmedInputs = nofArmedInputs;
+	asioCtx.nofArmedOutputs = nofArmedOutputs;
+	if( asioCtx.exchangedInputSamples )
+	{
+		delete[] asioCtx.exchangedInputSamples;
+	}
+
+	if( asioCtx.exchangedOutputSamples )
+	{
+		delete[] asioCtx.exchangedOutputSamples;
+	}
+
+	asioCtx.exchangedInputSamples = new long[nofArmedInputs * asioCtx.bufferSize];
+	asioCtx.exchangedOutputSamples = new long[nofArmedOutputs * asioCtx.bufferSize];
 }
 
-bool prepBuffers( AsioContext *ctx )
+void prepCallbacks()
 {
-	if( asioCtx.record )
-	{
-		ctx->buffers = new ASIOBufferInfo[ctx->numInput];
-		for( int channel = 0; channel < ctx->numInput; channel++ )
-		{
-			ctx->buffers[channel] = {0};
-			ctx->buffers[channel].channelNum = channel;
-			ctx->buffers[channel].isInput = ASIOTrue;
-		}
-	}
-	else
-	{
-		ctx->buffers = new ASIOBufferInfo[ctx->numOutput];
-		for( int channel = 0; channel < ctx->numOutput; channel++ )
-		{
-			ctx->buffers[channel] = {0};
-			ctx->buffers[channel].channelNum = channel;
-			ctx->buffers[channel].isInput = ASIOFalse;
-		}
-	}
-
-	return true;
-}
-
-bool prepCallbacks( AsioContext *ctx )
-{
-	ctx->callBacks.asioMessage = asioMessage;
-	ctx->callBacks.bufferSwitch = bufferSwitch;
-	ctx->callBacks.bufferSwitchTimeInfo = bufferSwitchTimeInfo;
-	ctx->callBacks.sampleRateDidChange = sampleRateDidChange;
-	return true;
-}
-
-void fillPlaybackBuffer( DWORD pbufIndex )
-{
-	ReadFile( asioCtx.playbackFileHandle, asioCtx.playbackBuffer[pbufIndex], asioCtx.playbackBufferSize, &asioCtx.playbackBufferRead[pbufIndex], NULL );
-	if( asioCtx.playbackBufferRead[pbufIndex] < asioCtx.playbackBufferSize )
-	{
-		asioCtx.playbackEOF = true;
-	}
-	printf( "\nTo read: %uRead: %u", asioCtx.playbackBufferSize, asioCtx.playbackBufferRead[pbufIndex] );
-	fflush( stdout );
-}
-
-void listDrivers( void )
-{
-	LPASIODRVSTRUCT drvParse = asioCtx.asioDrivers->lpdrvlist;
-	int dn = 1;
-	printf( "\nAvailable ASIO drivers: ");
-	while( drvParse )
-	{
-		printf( "\n%u %s", dn, drvParse->drvname );
-		drvParse = drvParse->next;
-		dn++;
-	}
-	printf( "\n" );
-}
-
-void printUsage( void )
-{
-	printf( "\nTo playback or record a file: ");
-	printf( "\nasiojni [record] -ch <channel number> -d <driver name> -f <filename>");
-	printf( "\nTo list files: ");
-	printf( "\nasiojni -l");
-}
-
-int main( int argc, char *args[] )
-{
-
-	int arg = 1;
-	while( arg < argc )
-	{
-		if( strstr( args[arg], "-d") )
-		{
-			asioCtx.driverName = args[arg+1];
-			arg += 2;
-		}
-		else if( strstr( args[arg], "-f" ) )
-		{
-			asioCtx.fileName = args[arg+1];
-			arg += 2;
-		}
-		else if( strstr( args[arg], "-ch" ))
-		{
-			asioCtx.channel = atoi( args[arg+1] );
-			arg += 2;
-		}
-		else if( strstr( args[arg], "record" ))
-		{
-			asioCtx.record = true;
-			arg++;
-		}
-		else if( strstr( args[arg], "-l" ))
-		{
-			listDrivers();
-			arg++;
-		}
-		else
-		{
-			printUsage();
-			delete asioCtx.asioDrivers;
-			return 1;
-		}
-	}
-
-	if( ( asioCtx.driverName == nullptr ) || ( asioCtx.fileName == nullptr ) )
-	{
-		printUsage();
-		delete asioCtx.asioDrivers;
-		return 1;
-	}
-
-	asioCtx.theOne = findDriver( asioCtx.asioDrivers, asioCtx.driverName, "" );
-
-	if( asioCtx.theOne )
-	{
-		if( asioCtx.asioDrivers->loadDriver( asioCtx.theOne->drvname ) )
-		{
-			if( getAsioInfo( &asioCtx ) )
-			{
-				printf( "\nDriver: %s", asioCtx.theOne->drvname );
-				printf( "\nNumber of inputs: %u", asioCtx.numInput );
-				printf( "\nNumber of outputs: %u", asioCtx.numOutput );
-				printf( "\nSample rate: %f", asioCtx.sampleRate );
-				printf( "\nInput latency: %fms", asioCtx.inputLatencyMs );
-				printf( "\nOutput latency: %fms", asioCtx.outputLatencyMs );
-				printf( "\nBuffer size: %u", asioCtx.bufferSize );
-
-				printf( "\n  Inputs: ");
-				for( int in = 0; in < asioCtx.numInput; in++ )
-				{
-					printChannelInfo( asioCtx.inputChannelsInfo[in ]);
-				}
-
-				printf( "\n  Outputs: " );
-				for( int out = 0; out < asioCtx.numOutput; out++ )
-				{
-					printChannelInfo( asioCtx.outputChannelsInfo[out] );
-				}
-
-				prepBuffers( &asioCtx );
-				prepCallbacks( &asioCtx );
-				ASIOError err = ASIOCreateBuffers( asioCtx.buffers, asioCtx.numInput, asioCtx.bufferSize, &asioCtx.callBacks );
-				printf( "\nASIOCreateBuffers returned: %i", err );
-
-				if( asioCtx.record )
-				{
-					asioCtx.recordFileHandle = CreateFile( asioCtx.fileName, GENERIC_WRITE, FILE_SHARE_READ, NULL,
-							CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );
-					if( asioCtx.recordFileHandle == INVALID_HANDLE_VALUE )
-					{
-						delete asioCtx.asioDrivers;
-						printf( "\nInvalid file");
-						return 1;
-					}
-					asioCtx.recordFileBuffer = new BYTE [3*asioCtx.bufferSize];
-					printf( "\nPress key to terminate recording\n " );
-				}
-				else
-				{
-					// Playback - open file and fill buffer
-					asioCtx.playbackFileHandle = CreateFile( asioCtx.fileName, GENERIC_READ, FILE_SHARE_WRITE, NULL,
-							OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL );
-					if( asioCtx.playbackFileHandle != INVALID_HANDLE_VALUE )
-					{
-						asioCtx.playbackBufferSize = 3 * asioCtx.sampleRate;
-						asioCtx.playbackBuffer[0] = new BYTE[asioCtx.playbackBufferSize];
-						asioCtx.playbackBuffer[1] = new BYTE[asioCtx.playbackBufferSize];
-						fillPlaybackBuffer( 0 );
-						fillPlaybackBuffer( 1 );
-					}
-					else
-					{
-						printf( "\nFailed opening file %s", asioCtx.fileName );
-						return 1;
-					}
-				}
-
-				err = ASIOStart();
-				fflush( stdout );
-
-				if( asioCtx.record )
-				{
-					getchar();
-					ASIOStop();
-
-					CloseHandle( asioCtx.recordFileHandle );
-					printf( "\nRecording to %s done.", asioCtx.fileName );
-				}
-				else
-				{
-					while( !asioCtx.playbackFinished ) {
-						Sleep( 100 );
-					}
-
-					CloseHandle( asioCtx.playbackFileHandle );
-					printf( "\nPLayback from %s done.", asioCtx.fileName );
-
-					delete[] asioCtx.playbackBuffer[0];
-					delete[] asioCtx.playbackBuffer[1];
-				}
-
-
-			}
-			else
-			{
-				printf( "Getting ASIO info failed" );
-			}
-
-		}
-		else
-		{
-			printf( "\nCould not load driver %s", asioCtx.theOne->drvname );
-		}
-	}
-	else
-	{
-		printf( "\nDriver not found" );
-	}
-	return 0;
+	asioCtx.callBacks.asioMessage = asioMessage;
+	asioCtx.callBacks.bufferSwitch = bufferSwitch;
+	asioCtx.callBacks.bufferSwitchTimeInfo = bufferSwitchTimeInfo;
+	asioCtx.callBacks.sampleRateDidChange = sampleRateDidChange;
 }
