@@ -10,6 +10,13 @@ import java.util.Vector;
  *
  */
 public class Asio {
+	
+	static {
+		String wd = System.getProperty( "user.dir") + "/" + "libasiojni.dll";
+		System.out.println( "Loading " + wd );
+		System.load( wd );
+	}
+	
 	private boolean isStarted;
 	private double samplerate;
 	private int bufferSize;
@@ -34,7 +41,7 @@ public class Asio {
 	public Collection<String> getDrivers() {
 		Collection<String> drivers = new Vector<String>();
 		String s = asioGetFirstDriver();
-		while( s.length() > 0 ) {
+		while( s != null ) {
 			drivers.add(s);
 			s = asioGetNextDriver();
 		}
@@ -128,7 +135,8 @@ public class Asio {
 	/**
 	 * Exchange input and output buffers with ASIO system.
 	 * @param outputBuffer	Linear buffer of sample buffers for output - left adjusted signed integers. Format is { s_ch_n1[bufferSize], s_ch_n2[bufferSize}+] ... } 
-	 * @return inputBuffer	Linear buffer of sample buffers for input. Same format as output buffer. 
+	 * @return inputBuffer	Linear buffer of sample buffers for input. Same format as output buffer. Note that the returned array reference will be
+	 * 						overwritten on next call to exchangeBuffers - so remember to copy data into Sample stream.
 	 */
 	public int[] exchangeBuffers( int[] outputBuffer ) {
 		if( !isStarted ) {
@@ -169,4 +177,14 @@ public class Asio {
 	private native int[] asioGetInputSamples();
 	private native int asioStart();
 	private native void asioStop();
+	
+	public static void main( String args[] ) {
+		System.out.println( "ASIO test" );
+		
+		Asio as = new Asio();
+		Collection<String> drivers = as.getDrivers();
+		for( String s : drivers ) {
+			System.out.println( s );
+		}
+	}
 }

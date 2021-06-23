@@ -16,19 +16,20 @@ struct AsioContext
 	AsioDrivers *asioDrivers;
 	LPASIODRVSTRUCT asioDrvList;
 	const char *driverName;
-	LONG channel;
 	LPASIODRVSTRUCT theOne;
 	ASIODriverInfo driverInfo;
 	ASIOSampleRate sampleRate;
-	LONG numInput;
-	LONG numOutput;
-	LONG bufferSize;
-	LONG outputLatency;
-	LONG inputLatency;
+	long numInput;
+	long numOutput;
+	long outputLatency;
+	long inputLatency;
+	long sampleBufferSize;
+	long exchangeOutputBufferSize;
+	long exchangeInputBufferSize;
 	unsigned long long armedInputsMask;
 	unsigned long long armedOutputsMask;
-	LONG nofArmedInputs;
-	LONG nofArmedOutputs;
+	long nofArmedInputs;
+	long nofArmedOutputs;
 	double outputLatencyMs;
 	double inputLatencyMs;
 	ASIOChannelInfo **inputChannelsInfo;
@@ -38,12 +39,13 @@ struct AsioContext
 	ASIOSamples lastSamplePos;
 	long *exchangedInputSamples;
 	long *exchangedOutputSamples;
+	jintArray jniReturnSampleBuffer;
 };
 
 AsioContext asioCtx = {0};
 
 LPASIODRVSTRUCT findDriver( AsioDrivers *adrv, const string asioDriverName );
-void prepBuffers();
+void prepBuffers( JNIEnv *env );
 void prepCallbacks();
 
 /* ASIO callback functions  */
@@ -78,18 +80,24 @@ BOOL WINAPI DllMain(
         	delete asioCtx.asioDrivers;
             break;
     }
+    fflush( stdout );
     return TRUE;  // Successful DLL_PROCESS_ATTACH.
 }
 
 JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioLibInit(JNIEnv *env, jobject thisobj)
 {
+	printf( "ASIO lib init\n" );
+	fflush( stdout );
 }
 
 JNIEXPORT jstring JNICALL Java_dk_yadaw_audio_Asio_asioGetFirstDriver(JNIEnv *env, jobject thisobj)
 {
-	LPASIODRVSTRUCT first = asioCtx.asioDrivers->lpdrvlist;
-	asioCtx.asioDrvList = first;
-	return env->NewStringUTF( first->drvname );
+	if( asioCtx.asioDrivers ) {
+		LPASIODRVSTRUCT first = asioCtx.asioDrivers->lpdrvlist;
+		asioCtx.asioDrvList = first->next;
+		return env->NewStringUTF( first->drvname );
+	}
+	return NULL;
 }
 
 JNIEXPORT jstring JNICALL Java_dk_yadaw_audio_Asio_asioGetNextDriver(JNIEnv *env, jobject thisobj)
@@ -132,7 +140,7 @@ JNIEXPORT jboolean JNICALL Java_dk_yadaw_audio_Asio_asioInit(JNIEnv *env, jobjec
 	{
 		ASIOGetSampleRate( &asioCtx.sampleRate );
 		ASIOError err = ASIOGetBufferSize(&minSize, &maxSize, &preferredSize, &granularity);
-		asioCtx.bufferSize = preferredSize;
+		asioCtx.sampleBufferSize = preferredSize;
 		ASIOGetLatencies( &asioCtx.inputLatency, &asioCtx.outputLatency );
 		ASIOGetChannels(&asioCtx.numInput, &asioCtx.numOutput );
 		result = JNI_TRUE;
@@ -157,7 +165,7 @@ JNIEXPORT jdouble JNICALL Java_dk_yadaw_audio_Asio_asioGetSamplerate(JNIEnv *, j
 
 JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioGetBufferSize(JNIEnv *, jobject)
 {
-	return asioCtx.bufferSize;
+	return asioCtx.sampleBufferSize;
 }
 
 JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioGetOutputLatency(JNIEnv *env, jobject thisobj )
@@ -201,24 +209,24 @@ JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioArmOutput(JNIEnv *env, jobje
 	asioCtx.armedOutputsMask |= ( 1 << channel );
 }
 
-JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioPrepBuffers(JNIEnv *, jobject)
+JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioPrepBuffers(JNIEnv *env, jobject thisobj )
 {
-	prepBuffers();
+	prepBuffers( env );
 	prepCallbacks();
-	ASIOError err = ASIOCreateBuffers( asioCtx.buffers, asioCtx.numInput, asioCtx.bufferSize, &asioCtx.callBacks );
+	ASIOError err = ASIOCreateBuffers( asioCtx.buffers, asioCtx.numInput, asioCtx.sampleBufferSize, &asioCtx.callBacks );
 }
 
 JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioSetOutputSamples(JNIEnv *env, jobject thisobj, jintArray samples )
 {
 	jint *outputSamples = env->GetIntArrayElements(samples, NULL );
-
-	memcpy( asioCtx.exchangedOutputSamples, outputSamples, asioCtx.bufferSize * asioCtx.nofArmedOutputs * sizeof( int ));
+	memcpy( asioCtx.exchangedOutputSamples, outputSamples, asioCtx.exchangeOutputBufferSize * sizeof( int ) );
 	env->ReleaseIntArrayElements(samples, outputSamples, JNI_ABORT );
 }
 
 JNIEXPORT jintArray JNICALL Java_dk_yadaw_audio_Asio_asioGetInputSamples(JNIEnv *env, jobject thisobj )
 {
-	return NULL;
+	env->SetIntArrayRegion( asioCtx.jniReturnSampleBuffer, 0, asioCtx.exchangeInputBufferSize, asioCtx.exchangedInputSamples );
+	return asioCtx.jniReturnSampleBuffer;
 }
 
 JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioStart(JNIEnv *, jobject)
@@ -285,7 +293,7 @@ long asioMessage(long selector, long value, void* message, double* opt )
 ASIOTime* bufferSwitchTimeInfo(ASIOTime* params, long doubleBufferIndex, ASIOBool directProcess)
 {
 	DWORD byteWritten;
-	DWORD bytesToWrite = 3 * asioCtx.bufferSize;
+	DWORD bytesToWrite = 3 * asioCtx.sampleBufferSize;
 	double timePos  = params->timeInfo.samplePosition.lo / asioCtx.sampleRate;
 
 	asioCtx.lastSamplePos = params->timeInfo.samplePosition;
@@ -337,7 +345,7 @@ bool getChannelInfo( AsioContext *ctx )
 	return true;
 }
 
-void prepBuffers()
+void prepBuffers( JNIEnv *env )
 {
 
 	int nofArmedOutputs = 0;
@@ -396,6 +404,8 @@ void prepBuffers()
 
 	asioCtx.nofArmedInputs = nofArmedInputs;
 	asioCtx.nofArmedOutputs = nofArmedOutputs;
+	asioCtx.exchangeInputBufferSize = nofArmedInputs * asioCtx.sampleBufferSize;
+	asioCtx.exchangeOutputBufferSize = nofArmedOutputs * asioCtx.sampleBufferSize;
 	if( asioCtx.exchangedInputSamples )
 	{
 		delete[] asioCtx.exchangedInputSamples;
@@ -406,8 +416,9 @@ void prepBuffers()
 		delete[] asioCtx.exchangedOutputSamples;
 	}
 
-	asioCtx.exchangedInputSamples = new long[nofArmedInputs * asioCtx.bufferSize];
-	asioCtx.exchangedOutputSamples = new long[nofArmedOutputs * asioCtx.bufferSize];
+	asioCtx.exchangedInputSamples = new long[asioCtx.exchangeInputBufferSize];
+	asioCtx.exchangedOutputSamples = new long[asioCtx.exchangeOutputBufferSize];
+	asioCtx.jniReturnSampleBuffer = env->NewIntArray( asioCtx.exchangeInputBufferSize );
 }
 
 void prepCallbacks()
