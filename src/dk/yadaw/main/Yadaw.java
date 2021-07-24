@@ -1,8 +1,11 @@
 package dk.yadaw.main;
 
-import java.util.Random;
+
 
 import javax.swing.JFrame;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
 import javax.swing.SwingUtilities;
 
 import dk.yadaw.widgets.VUMeter;
@@ -19,28 +22,22 @@ public class Yadaw extends Thread {
 		vu = new VUMeter( false );
 		mainFrame.add( vu );
 		mainFrame.setVisible(true);
+		
+		JMenuBar menuBar = new JMenuBar();
+		JMenu fileMenu = new JMenu( "File" );
+		JMenuItem fileSave = new JMenuItem( "Save..." );
+		JMenuItem fileLoad = new JMenuItem( "Load..." );
+		JMenuItem fileExit = new JMenuItem( "Exit" );
+		fileMenu.add( fileSave );
+		fileMenu.add( fileLoad );
+		fileMenu.add( fileExit );
+		menuBar.add( fileMenu );
+		
+		mainFrame.setJMenuBar(menuBar);
 	}
 	
 	@Override
 	public void run() {
-		test();
-	}
-	
-	private void test() {
-		int vals[] = {0, 1, 2, 4, 11, 2, 3, 2, 3, 10, 2, 3, 2, 1, 9, 2, 1, 0, 1, 9 };
-		int i = 0;
-		for( int n = 0; n < 100; n++ ) {
-			vu.setVal ( vals[i++] );
-			if( i == vals.length ) {
-				i = 0;
-			}
-			try {
-				Thread.sleep( 10 );
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
-		vu.setVal( 0 );
 	}
 	
 	@Override

@@ -180,11 +180,29 @@ public class Asio {
 	
 	public static void main( String args[] ) {
 		System.out.println( "ASIO test" );
-		
+		String theDriver = null;
 		Asio as = new Asio();
 		Collection<String> drivers = as.getDrivers();
 		for( String s : drivers ) {
 			System.out.println( s );
+			if( s.contains( "Focusrite") && s.contains( "USB" ) ) {
+				theDriver = s;
+			}
+		}
+		
+		if( theDriver != null ) {
+			System.out.println( "Opening driver: " + theDriver );
+			try {
+				as.open(theDriver);
+				System.out.println( "  Number of inputs: " + as.getNofInputs() );
+				System.out.println( "  Number of outputs: " + as.getNofOutputs() );
+				System.out.println( "  Input latency: " + as.getInputLatency() );
+				System.out.println( "  Output latency: " + as.asioGetOutputLatency() );
+				System.out.println( "  SampleRate: " + as.getSamplerate() );
+				System.out.println( "  Buffer size: " + as.getBufferSize() );
+			} catch (AsioException e) {
+				e.printStackTrace();
+			}			
 		}
 	}
 }

@@ -77,7 +77,7 @@ BOOL WINAPI DllMain(
 
         case DLL_PROCESS_DETACH:
         	printf( "AsioJNI unload\n" );
-        	delete asioCtx.asioDrivers;
+        	//delete asioCtx.asioDrivers;
             break;
     }
     fflush( stdout );
