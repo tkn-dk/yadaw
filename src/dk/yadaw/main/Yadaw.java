@@ -2,6 +2,9 @@ package dk.yadaw.main;
 
 
 
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+
 import javax.swing.JFrame;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
@@ -24,14 +27,30 @@ public class Yadaw extends Thread {
 		mainFrame.setVisible(true);
 		
 		JMenuBar menuBar = new JMenuBar();
+		
+		// File menu
 		JMenu fileMenu = new JMenu( "File" );
 		JMenuItem fileSave = new JMenuItem( "Save..." );
 		JMenuItem fileLoad = new JMenuItem( "Load..." );
 		JMenuItem fileExit = new JMenuItem( "Exit" );
+		fileExit.addActionListener( new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				System.exit(NORM_PRIORITY);	
+			}
+		});
 		fileMenu.add( fileSave );
 		fileMenu.add( fileLoad );
 		fileMenu.add( fileExit );
 		menuBar.add( fileMenu );
+		
+		// Audio menu
+		JMenu audioMenu = new JMenu( "Audio" );
+		JMenuItem audioSelectInterface = new JMenu( "Open Interface");
+		JMenuItem audioAddTrack = new JMenu( "Add track" );
+		audioMenu.add( audioSelectInterface );
+		audioMenu.add( audioAddTrack );
+		menuBar.add( audioMenu );
 		
 		mainFrame.setJMenuBar(menuBar);
 	}
