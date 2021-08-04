@@ -11,16 +11,33 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.SwingUtilities;
 
+import dk.yadaw.audio.Asio;
+import dk.yadaw.audio.AsioException;
+import dk.yadaw.datamodel.DataModelInstance;
+import dk.yadaw.datamodel.DataModelUpdateListenerIf;
+import dk.yadaw.datamodel.YadawDataModel;
+import dk.yadaw.datamodel.YadawDataModel.DataID;
+import dk.yadaw.widgets.SelectAsioDlg;
 import dk.yadaw.widgets.VUMeter;
+import dk.yadaw.widgets.ViewAudioParmsDlg;
 
-public class Yadaw extends Thread {
+public class Yadaw extends Thread implements DataModelUpdateListenerIf {
 	VUMeter vu;
 	JFrame mainFrame;
+	YadawDataModel model;
+	Asio asio;
 	
-	public void createGui() {
+	public void initApp() {
+		model = DataModelInstance.getModelInstance();
+		model.addUpdateListener( DataID.YADAW_ALL, this );
+		asio = model.getAsio();
+		createGui();
+	}
+	
+	private void createGui() {
 		mainFrame = new JFrame( "Yadaw" );
 		mainFrame.setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE );
-		mainFrame.setSize(300, 300);
+		mainFrame.setExtendedState( JFrame.MAXIMIZED_BOTH );
 		
 		vu = new VUMeter( false );
 		mainFrame.add( vu );
@@ -46,9 +63,27 @@ public class Yadaw extends Thread {
 		
 		// Audio menu
 		JMenu audioMenu = new JMenu( "Audio" );
-		JMenuItem audioSelectInterface = new JMenu( "Open Interface");
-		JMenuItem audioAddTrack = new JMenu( "Add track" );
+		JMenuItem audioSelectInterface = new JMenuItem( "Open Interface");
+		audioSelectInterface.addActionListener( new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				System.out.println( "Open asio dialog");
+				SelectAsioDlg dlg = new SelectAsioDlg( mainFrame );
+			}
+		});
+		
+		JMenuItem audioSettings = new JMenuItem( "Audio Settings");
+		audioSettings.addActionListener( new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				System.out.println( "Audio settings action " );
+				ViewAudioParmsDlg dlg = new ViewAudioParmsDlg( mainFrame );
+			}
+		});
+		
+		JMenuItem audioAddTrack = new JMenuItem( "Add track" );
 		audioMenu.add( audioSelectInterface );
+		audioMenu.add( audioSettings );
 		audioMenu.add( audioAddTrack );
 		menuBar.add( audioMenu );
 		
@@ -68,10 +103,29 @@ public class Yadaw extends Thread {
 		Yadaw yoda = new Yadaw();
 		SwingUtilities.invokeLater( new Runnable() {
 			public void run() {
-				yoda.createGui();
+				yoda.initApp();
 				yoda.start();
 			}
 		});
+	}
+
+	@Override
+	public void dataItemUpdated(Object itemID, Object itemData) {
+		DataID dataID = ( DataID)itemID;
+		
+		switch( dataID ) {
+		case YADAW_ASIO_DRIVER_NAME:
+			System.out.println( "Opening: " + ( String )itemData );
+			try {
+				asio.open( model.getAsioDriverName() );
+			} catch (AsioException e) {
+				e.printStackTrace();
+			}
+			break;
+			
+		default:
+			break;
+		}
 	}
 
 }
