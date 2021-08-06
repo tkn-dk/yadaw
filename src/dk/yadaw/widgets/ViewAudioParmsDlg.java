@@ -37,8 +37,17 @@ public class ViewAudioParmsDlg {
 		JLabel numberOfInputsLabel = new JLabel( "Number of inputs:");
 		JLabel numberOfInputs = new JLabel( String.valueOf( asio.getNofInputs()));
 		
-		JLabel numberOfOutputsLabel = new JLabel( "Number of outputs" );
+		JLabel numberOfOutputsLabel = new JLabel( "Number of outputs:" );
 		JLabel numberOfOutputs = new JLabel( String.valueOf( asio.getNofOutputs()));
+		
+		JLabel bufferSizeLabel = new JLabel( "Buffer size:" );
+		JLabel bufferSizeValue = new JLabel( String.valueOf( asio.getBufferSize()) );
+		
+		JLabel outputLatencyLabel = new JLabel( "Output latency:");
+		JLabel outputLatencyValue = new JLabel( String.valueOf(  (1000.0 * asio.getOutputLatency()) / asio.getSamplerate() ) + "ms" );
+		
+		JLabel inputLatencyLabel = new JLabel( "Input latency:" );
+		JLabel inputLatencyValue = new JLabel( String.valueOf(  (1000.0 * asio.getInputLatency()) / asio.getSamplerate() ) + "ms" );
 		
 		dlg.add( driverNameLabel );
 		dlg.add( driverName );
@@ -48,6 +57,13 @@ public class ViewAudioParmsDlg {
 		dlg.add( numberOfInputs );
 		dlg.add( numberOfOutputsLabel );
 		dlg.add( numberOfOutputs );
+		dlg.add( bufferSizeLabel );
+		dlg.add( bufferSizeValue );
+		dlg.add( outputLatencyLabel );
+		dlg.add( outputLatencyValue );
+		dlg.add( inputLatencyLabel );
+		dlg.add( inputLatencyValue );
+		
 		dlg.setSize( DLG_WIDTH, DLG_HEIGHT );
 		dlg.setResizable( false );
 		
@@ -56,16 +72,17 @@ public class ViewAudioParmsDlg {
 		locateLabel( sampleRateLabel, sampleRate, 40 );
 		locateLabel( numberOfInputsLabel, numberOfInputs, 60 );
 		locateLabel( numberOfOutputsLabel, numberOfOutputs, 80 );
+		locateLabel( bufferSizeLabel, bufferSizeValue, 100 );
+		locateLabel( outputLatencyLabel, outputLatencyValue, 120 );
+		locateLabel( inputLatencyLabel, inputLatencyValue, 140 );
 		dlg.setVisible(true);
 	}
 	
 	private void locateLabel( JLabel label, JLabel value, int ypos ) {
 		Dimension labelDim = label.getPreferredSize();
-		System.out.println( "Label width: " + labelDim.width + " height: " + labelDim.height );
 		Dimension valueDim = value.getPreferredSize();
-		System.out.println( "Value width: " + valueDim.width + " height: " + valueDim.height );
-		label.setBounds( DLG_WIDTH / 2 - labelDim.width - 1, ypos, labelDim.width, labelDim.height  );
-		value.setBounds( DLG_WIDTH / 2 + 1, ypos, valueDim.width, valueDim.height  );		
+		label.setBounds( DLG_WIDTH / 2 - labelDim.width - 3, ypos, labelDim.width, labelDim.height  );
+		value.setBounds( DLG_WIDTH / 2 + 3, ypos, valueDim.width, valueDim.height  );		
 	}
 	
 }
