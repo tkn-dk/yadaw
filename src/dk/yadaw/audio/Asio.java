@@ -106,10 +106,14 @@ public class Asio {
 		
 		int[] outputBuffer = new int[bufferSize];
 		byte[] bSample = new byte[3];
-		
+		int sampleBuffers = 0;
 		do {
+			System.out.println( );
 			int[] inputBuffer = exchangeBuffers( outputBuffer );
 			for( int n = 0; n < bufferSize; n++ ) {
+				if( n < 10 ) {
+					System.out.print( "  " + inputBuffer[n] );
+				}
 				bSample[0] = ( byte )(inputBuffer[n] >> 24);
 				bSample[1] = ( byte )(inputBuffer[n] >> 16);
 				bSample[2] = ( byte )(inputBuffer[n] >> 8);
@@ -119,13 +123,18 @@ public class Asio {
 					System.out.println( "Error writing to file \"" + filename + "\"" );
 				}
 			}
-			System.out.print( "\rSample: " + getSamplePos() );
-		} while( isStarted );
+			
+			System.out.print( "\rSamplepos: " + asioGetSamplePos() + "  " );
+			sampleBuffers++;
+		} while( isStarted && sampleBuffers < 10 );
+		
+		System.out.println( "\ndone");
+		asioStop();
 		
 		try {
 			sampleStream.close();
 		} catch (IOException e) {
-			System.out.println( "Erroe closing file \"" + filename + "\"" );
+			System.out.println( "Error closing file \"" + filename + "\"" );
 		}
 	}
 	
@@ -204,9 +213,7 @@ public class Asio {
 		synchronized( this ) {
 			try {
 				asioSetOutputSamples( outputBuffer );
-				System.out.println( "asio wait samples");
 				wait();
-				System.out.println( "done wait samples");
 				return asioGetInputSamples();
 			}
 			catch( InterruptedException e ) {

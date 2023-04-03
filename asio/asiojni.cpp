@@ -178,8 +178,17 @@ JNIEXPORT jdouble JNICALL Java_dk_yadaw_audio_Asio_asioGetSamplerate(JNIEnv *, j
 }
 
 JNIEXPORT jlong JNICALL Java_dk_yadaw_audio_Asio_asioGetSamplePos(JNIEnv *, jobject) {
-	jlong *jl_ptr = ( jlong *)&asioCtx.lastSamplePos;
-	return *jl_ptr;
+	jlong jret = 0;
+	BYTE *bjret = ( BYTE *)&jret;
+	bjret[7] = (( BYTE *)&asioCtx.lastSamplePos.hi)[3];
+	bjret[6] = (( BYTE *)&asioCtx.lastSamplePos.hi)[2];
+	bjret[5] = (( BYTE *)&asioCtx.lastSamplePos.hi)[1];
+	bjret[4] = (( BYTE *)&asioCtx.lastSamplePos.hi)[0];
+	bjret[3] = (( BYTE *)&asioCtx.lastSamplePos.lo)[3];
+	bjret[2] = (( BYTE *)&asioCtx.lastSamplePos.lo)[2];
+	bjret[1] = (( BYTE *)&asioCtx.lastSamplePos.lo)[1];
+	bjret[0] = (( BYTE *)&asioCtx.lastSamplePos.lo)[0];
+	return jret;
 }
 
 JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioGetBufferSize(JNIEnv *, jobject)
@@ -244,7 +253,23 @@ JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioSetOutputSamples(JNIEnv *env
 
 JNIEXPORT jintArray JNICALL Java_dk_yadaw_audio_Asio_asioGetInputSamples(JNIEnv *env, jobject thisobj )
 {
-	env->SetIntArrayRegion( asioCtx.jniReturnSampleBuffer, 0, asioCtx.exchangeInputBufferSize, asioCtx.exchangedInputSamples );
+	env->DeleteLocalRef( asioCtx.jniReturnSampleBuffer );
+	asioCtx.jniReturnSampleBuffer = env->NewIntArray( asioCtx.exchangeInputBufferSize );
+
+	jsize islen =  env->GetArrayLength( asioCtx.jniReturnSampleBuffer );
+	if( islen != asioCtx.exchangeInputBufferSize )
+	{
+		printf( "ERROR: jintarray size: %u. Sample buffer size: %u.\n", islen, asioCtx.exchangeInputBufferSize );
+		return NULL;
+	}
+	else
+	{
+		for( int n = 0; n < 10; n++ )
+			printf( "  %i ", asioCtx.exchangedInputSamples[n] );
+		printf( "\n" );
+
+		env->SetIntArrayRegion( asioCtx.jniReturnSampleBuffer, 0, asioCtx.exchangeInputBufferSize, asioCtx.exchangedInputSamples );
+	}
 	return asioCtx.jniReturnSampleBuffer;
 }
 
@@ -439,7 +464,8 @@ void prepBuffers( JNIEnv *env )
 	asioCtx.exchangedOutputSamples = new long[asioCtx.exchangeOutputBufferSize];
 	asioCtx.jniReturnSampleBuffer = env->NewIntArray( asioCtx.exchangeInputBufferSize );
 
-	printf( "jni prepBuffer. %u input. %u output\n", nofArmedInputs, nofArmedOutputs );
+	printf( "jni: prepBuffer. %u input. %u output\n", nofArmedInputs, nofArmedOutputs );
+
 }
 
 void prepCallbacks()
