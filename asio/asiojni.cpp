@@ -44,9 +44,14 @@ struct AsioContext
 
 AsioContext asioCtx = {0};
 
+static JavaVM *jvm = NULL;
+static jobject parentObject = NULL;
+static jmethodID notifyMethod = NULL;
+
 LPASIODRVSTRUCT findDriver( AsioDrivers *adrv, const string asioDriverName );
 void prepBuffers( JNIEnv *env );
 void prepCallbacks();
+void notifySample();
 
 /* ASIO callback functions  */
 void bufferSwitch(long doubleBufferIndex, ASIOBool directProcess);
@@ -77,7 +82,11 @@ BOOL WINAPI DllMain(
 
         case DLL_PROCESS_DETACH:
         	printf( "AsioJNI unload\n" );
-        	//delete asioCtx.asioDrivers;
+        	if( asioCtx.asioDrivers )
+        	{
+        		asioCtx.asioDrivers->removeCurrentDriver();
+        	}
+        	delete asioCtx.asioDrivers;
             break;
     }
     fflush( stdout );
@@ -86,8 +95,13 @@ BOOL WINAPI DllMain(
 
 JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioLibInit(JNIEnv *env, jobject thisobj)
 {
+	jclass parentClass;
+
 	printf( "ASIO lib init\n" );
-	fflush( stdout );
+	env->GetJavaVM( &jvm );
+	parentClass = env->FindClass( "dk/yadaw/audio/Asio" );
+	parentObject = env->NewGlobalRef( thisobj );
+	notifyMethod = env->GetMethodID( parentClass, "notifySample", "()V");
 }
 
 JNIEXPORT jstring JNICALL Java_dk_yadaw_audio_Asio_asioGetFirstDriver(JNIEnv *env, jobject thisobj)
@@ -161,6 +175,11 @@ JNIEXPORT jboolean JNICALL Java_dk_yadaw_audio_Asio_asioInit(JNIEnv *env, jobjec
 
 JNIEXPORT jdouble JNICALL Java_dk_yadaw_audio_Asio_asioGetSamplerate(JNIEnv *, jobject){
 	return asioCtx.sampleRate;
+}
+
+JNIEXPORT jlong JNICALL Java_dk_yadaw_audio_Asio_asioGetSamplePos(JNIEnv *, jobject) {
+	jlong *jl_ptr = ( jlong *)&asioCtx.lastSamplePos;
+	return *jl_ptr;
 }
 
 JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioGetBufferSize(JNIEnv *, jobject)
@@ -295,8 +314,8 @@ ASIOTime* bufferSwitchTimeInfo(ASIOTime* params, long doubleBufferIndex, ASIOBoo
 	DWORD byteWritten;
 	DWORD bytesToWrite = 3 * asioCtx.sampleBufferSize;
 	double timePos  = params->timeInfo.samplePosition.lo / asioCtx.sampleRate;
-
 	asioCtx.lastSamplePos = params->timeInfo.samplePosition;
+	notifySample();
 	return params;
 }
 
@@ -419,12 +438,34 @@ void prepBuffers( JNIEnv *env )
 	asioCtx.exchangedInputSamples = new long[asioCtx.exchangeInputBufferSize];
 	asioCtx.exchangedOutputSamples = new long[asioCtx.exchangeOutputBufferSize];
 	asioCtx.jniReturnSampleBuffer = env->NewIntArray( asioCtx.exchangeInputBufferSize );
+
+	printf( "jni prepBuffer. %u input. %u output\n", nofArmedInputs, nofArmedOutputs );
 }
 
 void prepCallbacks()
 {
+	printf( "jni prepCallbacks\n" );
 	asioCtx.callBacks.asioMessage = asioMessage;
 	asioCtx.callBacks.bufferSwitch = bufferSwitch;
 	asioCtx.callBacks.bufferSwitchTimeInfo = bufferSwitchTimeInfo;
 	asioCtx.callBacks.sampleRateDidChange = sampleRateDidChange;
+}
+
+void notifySample()
+{
+    JNIEnv* env;
+    int getEnvResult = jvm->GetEnv((void**)&env, JNI_VERSION_1_6);
+    if (getEnvResult == JNI_EDETACHED) {
+        jvm->AttachCurrentThread((void**)&env, NULL);
+    } else if (getEnvResult == JNI_EVERSION) {
+        printf( "JNI version error\n" );
+    }
+
+    env->MonitorEnter( parentObject );
+    env->CallVoidMethod(parentObject, notifyMethod);
+    env->MonitorExit( parentObject );
+
+    if (getEnvResult == JNI_EDETACHED) {
+        jvm->DetachCurrentThread();
+    }
 }

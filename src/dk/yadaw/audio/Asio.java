@@ -1,5 +1,9 @@
 package dk.yadaw.audio;
 
+import java.io.BufferedOutputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.Collection;
 import java.util.Vector;
 
@@ -26,12 +30,19 @@ public class Asio {
 	private int nofOutputs;
 	private int nofActivatedInputs;
 	private int nofActivatedOutputs;
+	private Collection<String> drivers;
 	
 	/**
 	 * Construct class and initialize the native library. 
 	 */
 	public Asio() {
 		asioLibInit();
+		drivers = new Vector<String>();
+		String s = asioGetFirstDriver();
+		while( s != null ) {
+			drivers.add(s);
+			s = asioGetNextDriver();
+		}
 	}
 	
 	/**
@@ -39,12 +50,6 @@ public class Asio {
 	 * @return	Collection of string with driver names.
 	 */
 	public Collection<String> getDrivers() {
-		Collection<String> drivers = new Vector<String>();
-		String s = asioGetFirstDriver();
-		while( s != null ) {
-			drivers.add(s);
-			s = asioGetNextDriver();
-		}
 		return drivers;
 	}
 	
@@ -55,11 +60,11 @@ public class Asio {
 	 */
 	public void open( String driverName ) throws AsioException {
 		if( !asioLoadDriver( driverName ) ) {
-			throw new AsioException( "Driver not found" );
+			throw new AsioException( "Driver \"" + driverName + "\" not found" );
 		}
 		
 		if( !asioInit() ) {
-			throw new AsioException( "Asio init failed" );
+			throw new AsioException( "Asio init of driver \"" + driverName + "\" failed" );
 		}
 		
 		samplerate = asioGetSamplerate();
@@ -74,6 +79,58 @@ public class Asio {
 	
 	public double getSamplerate() {
 		return samplerate;
+	}
+	
+	public void recordTrack( int channel, String driver, String filename ) {
+		
+		try {
+			open( driver );
+		}
+		catch( AsioException ae ) {
+			System.out.println( ae );
+			return;
+		}
+		
+		FileOutputStream file;
+		try {
+			file = new FileOutputStream( filename );
+		} catch (FileNotFoundException e) {
+			System.out.println( "File path \"" + filename + "\" not found" );
+			return;
+		}
+		
+		BufferedOutputStream sampleStream = new BufferedOutputStream( file, bufferSize * 3 * ( int )samplerate  );
+		clearArmedChannels();
+		armInput( channel );
+		asioPrepBuffers();
+		
+		int[] outputBuffer = new int[bufferSize];
+		byte[] bSample = new byte[3];
+		
+		do {
+			int[] inputBuffer = exchangeBuffers( outputBuffer );
+			for( int n = 0; n < bufferSize; n++ ) {
+				bSample[0] = ( byte )(inputBuffer[n] >> 24);
+				bSample[1] = ( byte )(inputBuffer[n] >> 16);
+				bSample[2] = ( byte )(inputBuffer[n] >> 8);
+				try {
+					sampleStream.write(bSample);
+				} catch (IOException e) {
+					System.out.println( "Error writing to file \"" + filename + "\"" );
+				}
+			}
+			System.out.print( "\rSample: " + getSamplePos() );
+		} while( isStarted );
+		
+		try {
+			sampleStream.close();
+		} catch (IOException e) {
+			System.out.println( "Erroe closing file \"" + filename + "\"" );
+		}
+	}
+	
+	public long getSamplePos() {
+		return asioGetSamplePos();
 	}
 	
 	public int getBufferSize() {
@@ -147,7 +204,9 @@ public class Asio {
 		synchronized( this ) {
 			try {
 				asioSetOutputSamples( outputBuffer );
+				System.out.println( "asio wait samples");
 				wait();
+				System.out.println( "done wait samples");
 				return asioGetInputSamples();
 			}
 			catch( InterruptedException e ) {
@@ -164,6 +223,7 @@ public class Asio {
 	private native boolean asioLoadDriver( String driverName );
 	private native boolean asioInit();
 	private native double asioGetSamplerate();
+	private native long asioGetSamplePos();
 	private native int asioGetBufferSize();
 	private native int asioGetOutputLatency();
 	private native int asioGetInputLatency();
@@ -178,15 +238,19 @@ public class Asio {
 	private native int asioStart();
 	private native void asioStop();
 	
+	private void notifySample() {
+		this.notify();
+	}
+	
 	public static void main( String args[] ) {
 		System.out.println( "ASIO test" );
 		String theDriver = null;
 		Asio as = new Asio();
 		Collection<String> drivers = as.getDrivers();
 		for( String s : drivers ) {
-			System.out.println( s );
 			if( s.contains( "Focusrite") && s.contains( "USB" ) ) {
 				theDriver = s;
+				System.out.println( "Using ASIO driver \"" + s + "\"" );
 			}
 		}
 		
@@ -200,6 +264,16 @@ public class Asio {
 				System.out.println( "  Output latency: " + as.asioGetOutputLatency() );
 				System.out.println( "  SampleRate: " + as.getSamplerate() );
 				System.out.println( "  Buffer size: " + as.getBufferSize() );
+
+				if( args.length > 1 ) {
+					if( args[0].equalsIgnoreCase( "play" )) {
+						System.out.println( "playback: " + args[1] );
+					}
+					else if( args[0].equalsIgnoreCase( "record" )) {
+						System.out.println( "record: " + args[1] );
+						as.recordTrack(0, theDriver, args[1] );
+					}				
+				}
 			} catch (AsioException e) {
 				e.printStackTrace();
 			}			

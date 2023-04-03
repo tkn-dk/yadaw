@@ -57,6 +57,14 @@ JNIEXPORT jdouble JNICALL Java_dk_yadaw_audio_Asio_asioGetSamplerate
 
 /*
  * Class:     dk_yadaw_audio_Asio
+ * Method:    asioGetSamplePos
+ * Signature: ()J
+ */
+JNIEXPORT jlong JNICALL Java_dk_yadaw_audio_Asio_asioGetSamplePos
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     dk_yadaw_audio_Asio
  * Method:    asioGetBufferSize
  * Signature: ()I
  */
