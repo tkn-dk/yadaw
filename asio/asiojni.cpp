@@ -32,6 +32,7 @@ struct AsioContext
 	long nofArmedOutputs;
 	double outputLatencyMs;
 	double inputLatencyMs;
+	double timePos;
 	ASIOChannelInfo **inputChannelsInfo;
 	ASIOChannelInfo **outputChannelsInfo;
 	ASIOBufferInfo *buffers;
@@ -253,7 +254,11 @@ JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioSetOutputSamples(JNIEnv *env
 
 JNIEXPORT jintArray JNICALL Java_dk_yadaw_audio_Asio_asioGetInputSamples(JNIEnv *env, jobject thisobj )
 {
-	env->DeleteLocalRef( asioCtx.jniReturnSampleBuffer );
+	if( asioCtx.jniReturnSampleBuffer )
+	{
+		env->DeleteLocalRef( asioCtx.jniReturnSampleBuffer );
+	}
+
 	asioCtx.jniReturnSampleBuffer = env->NewIntArray( asioCtx.exchangeInputBufferSize );
 
 	jsize islen =  env->GetArrayLength( asioCtx.jniReturnSampleBuffer );
@@ -264,10 +269,6 @@ JNIEXPORT jintArray JNICALL Java_dk_yadaw_audio_Asio_asioGetInputSamples(JNIEnv 
 	}
 	else
 	{
-		for( int n = 0; n < 10; n++ )
-			printf( "  %i ", asioCtx.exchangedInputSamples[n] );
-		printf( "\n" );
-
 		env->SetIntArrayRegion( asioCtx.jniReturnSampleBuffer, 0, asioCtx.exchangeInputBufferSize, asioCtx.exchangedInputSamples );
 	}
 	return asioCtx.jniReturnSampleBuffer;
@@ -336,11 +337,43 @@ long asioMessage(long selector, long value, void* message, double* opt )
 
 ASIOTime* bufferSwitchTimeInfo(ASIOTime* params, long doubleBufferIndex, ASIOBool directProcess)
 {
-	DWORD byteWritten;
-	DWORD bytesToWrite = 3 * asioCtx.sampleBufferSize;
-	double timePos  = params->timeInfo.samplePosition.lo / asioCtx.sampleRate;
+	// TODO: Should hi part of samplepos be taken into account (recordings > 24h)
+	asioCtx.timePos  = params->timeInfo.samplePosition.lo / asioCtx.sampleRate;
 	asioCtx.lastSamplePos = params->timeInfo.samplePosition;
-	notifySample();
+
+	int nofChannels = asioCtx.nofArmedInputs + asioCtx.nofArmedOutputs;
+	long *outix = asioCtx.exchangedOutputSamples;
+	long *inix = asioCtx.exchangedInputSamples;
+	for( int bix = 0; bix < nofChannels; bix++ )
+	{
+		if( asioCtx.buffers[bix].isInput )
+		{
+			for( int s = 0; s < asioCtx.sampleBufferSize; s++ )
+			{
+				BYTE *dst = ( BYTE *)inix;
+				*inix = *(( long *)asioCtx.buffers[bix].buffers[doubleBufferIndex] + s);
+				inix++;
+			}
+
+		}
+		else
+		{
+			for( int s = 0; s < asioCtx.sampleBufferSize; s++ )
+			{
+				*( ( long *)asioCtx.buffers[bix].buffers[doubleBufferIndex] + s ) = *outix;
+				outix++;
+			}
+		}
+	}
+
+	ASIOOutputReady();
+
+
+	// First samplebuffer is crap - so only notify on subsequent
+	if( asioCtx.lastSamplePos.lo > asioCtx.sampleBufferSize )
+	{
+		notifySample();
+	}
 	return params;
 }
 
@@ -462,8 +495,6 @@ void prepBuffers( JNIEnv *env )
 
 	asioCtx.exchangedInputSamples = new long[asioCtx.exchangeInputBufferSize];
 	asioCtx.exchangedOutputSamples = new long[asioCtx.exchangeOutputBufferSize];
-	asioCtx.jniReturnSampleBuffer = env->NewIntArray( asioCtx.exchangeInputBufferSize );
-
 	printf( "jni: prepBuffer. %u input. %u output\n", nofArmedInputs, nofArmedOutputs );
 
 }

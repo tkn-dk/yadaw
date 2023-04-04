@@ -105,28 +105,23 @@ public class Asio {
 		asioPrepBuffers();
 		
 		int[] outputBuffer = new int[bufferSize];
+		long samplePos;
 		byte[] bSample = new byte[3];
-		int sampleBuffers = 0;
 		do {
-			System.out.println( );
 			int[] inputBuffer = exchangeBuffers( outputBuffer );
 			for( int n = 0; n < bufferSize; n++ ) {
-				if( n < 10 ) {
-					System.out.print( "  " + inputBuffer[n] );
-				}
-				bSample[0] = ( byte )(inputBuffer[n] >> 24);
-				bSample[1] = ( byte )(inputBuffer[n] >> 16);
-				bSample[2] = ( byte )(inputBuffer[n] >> 8);
+				int s = inputBuffer[n];
+				bSample[0] = ( byte )(s >> 24);
+				bSample[1] = ( byte )(s >> 16);
+				bSample[2] = ( byte )(s >> 8);
 				try {
 					sampleStream.write(bSample);
 				} catch (IOException e) {
 					System.out.println( "Error writing to file \"" + filename + "\"" );
 				}
 			}
-			
-			System.out.print( "\rSamplepos: " + asioGetSamplePos() + "  " );
-			sampleBuffers++;
-		} while( isStarted && sampleBuffers < 10 );
+			samplePos = asioGetSamplePos();
+		} while( isStarted && samplePos < 480000 );
 		
 		System.out.println( "\ndone");
 		asioStop();
@@ -205,14 +200,13 @@ public class Asio {
 	 * 						overwritten on next call to exchangeBuffers - so remember to copy data into Sample stream.
 	 */
 	public int[] exchangeBuffers( int[] outputBuffer ) {
-		if( !isStarted ) {
-			asioStart();
-			isStarted = true;
-		}
-		
 		synchronized( this ) {
 			try {
 				asioSetOutputSamples( outputBuffer );
+				if( !isStarted ) {
+					asioStart();
+					isStarted = true;
+				}				
 				wait();
 				return asioGetInputSamples();
 			}
