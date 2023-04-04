@@ -1,8 +1,10 @@
 package dk.yadaw.audio;
 
 import java.io.BufferedOutputStream;
+import java.io.BufferedWriter;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Vector;
@@ -99,29 +101,38 @@ public class Asio {
 			return;
 		}
 		
-		BufferedOutputStream sampleStream = new BufferedOutputStream( file, bufferSize * 3 * ( int )samplerate  );
+		BufferedOutputStream sampleStream = new BufferedOutputStream( file );
+		int[] secBuffer = new int[2000];
+		int sampleNum = 0;
 		clearArmedChannels();
 		armInput( channel );
 		asioPrepBuffers();
 		
 		int[] outputBuffer = new int[bufferSize];
 		long samplePos;
-		byte[] bSample = new byte[3];
+		byte[] bSamples = new byte[2000000];
+		int bsix = 0;
 		do {
 			int[] inputBuffer = exchangeBuffers( outputBuffer );
+			samplePos = asioGetSamplePos();
 			for( int n = 0; n < bufferSize; n++ ) {
 				int s = inputBuffer[n];
-				bSample[0] = ( byte )(s >> 24);
-				bSample[1] = ( byte )(s >> 16);
-				bSample[2] = ( byte )(s >> 8);
-				try {
-					sampleStream.write(bSample);
-				} catch (IOException e) {
-					System.out.println( "Error writing to file \"" + filename + "\"" );
+				bSamples[bsix++] = ( byte )(s >> 24);
+				bSamples[bsix++] = ( byte )(s >> 16);
+				bSamples[bsix++] = ( byte )(s >> 8);
+				
+				if( sampleNum < secBuffer.length ) {
+					secBuffer[sampleNum++] = s;
 				}
 			}
-			samplePos = asioGetSamplePos();
 		} while( isStarted && samplePos < 480000 );
+		
+		try {
+			System.out.println( "Writing samples ...");
+			sampleStream.write( bSamples, 0, bsix );
+		} catch (IOException e) {
+			System.out.println( "Error writing to file \"" + filename + "\"" );
+		}
 		
 		System.out.println( "\ndone");
 		asioStop();
@@ -130,6 +141,20 @@ public class Asio {
 			sampleStream.close();
 		} catch (IOException e) {
 			System.out.println( "Error closing file \"" + filename + "\"" );
+		}
+		
+		// Dump samples for debug
+		try {
+			FileWriter sampFile = new FileWriter( "samples.csv" );
+			BufferedWriter sampWriter = new BufferedWriter( sampFile );
+			
+			for( int s : secBuffer )
+			{
+				sampWriter.write( s + ";\n");
+			}
+			sampWriter.close();
+		} catch (IOException e) {
+			System.out.println( "Error opening sample file");
 		}
 	}
 	
