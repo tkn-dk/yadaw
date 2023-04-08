@@ -1,9 +1,12 @@
 package dk.yadaw.audio;
 
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.io.BufferedOutputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.Collection;
 import java.util.Vector;
 
@@ -22,6 +25,7 @@ public class Asio implements SoundInStream, SoundOutStream {
 	}
 	
 	private boolean isStarted;
+	private boolean isStopped;
 	private double samplerate;
 	private int bufferSize;
 	private int outputLatency;
@@ -110,7 +114,7 @@ public class Asio implements SoundInStream, SoundOutStream {
 			System.out.println( "File path \"" + filename + "\" not found" );
 			return;
 		}	
-		
+				
 		clearArmedChannels();
 		armInput( channel );
 		if( asioPrepBuffers() < 0 ) {
@@ -119,11 +123,16 @@ public class Asio implements SoundInStream, SoundOutStream {
 		};
 		
 		isStarted = false;
+		isStopped = false;
 		
 		int[][] outputBuffer = new int[1][4096];
 		int[][] inputBuffer = new int[1][4096];
 		byte[] bSamples = new byte[3];
 		long samplePos;
+		int samplePosUpdateInterval = (( int )samplerate / 10) / bufferSize;  // 10 for 100ms update interval
+		int sampleUpdate = 0;
+		DecimalFormat tdf = new DecimalFormat( "#.##" );
+		System.out.println( "samplePosUpdateInterval: " + samplePosUpdateInterval);
 		
 		try (BufferedOutputStream sampleStream = new BufferedOutputStream( file )) {
 			synchronized( this ) {
@@ -145,7 +154,16 @@ public class Asio implements SoundInStream, SoundOutStream {
 					}
 					
 					int nofSamples = asioGetInputSamples( inputBuffer );
-					samplePos = asioGetSamplePos();
+					
+					if( ++sampleUpdate >= samplePosUpdateInterval ) {
+						samplePos = asioGetSamplePos();
+						double t = ( double )samplePos / samplerate;
+						System.out.print( "\rT: " + tdf.format(t));
+						if( System.in.available() > 0 ) {
+							isStopped = true;
+						}
+						sampleUpdate = 0;
+					}
 					
 					for( int n = 0; n < nofSamples; n++ ) {
 						int s = inputBuffer[0][n];
@@ -154,7 +172,8 @@ public class Asio implements SoundInStream, SoundOutStream {
 						bSamples[2] = ( byte )(s >> 8);
 						sampleStream.write( bSamples );
 					}
-				} while( samplePos < 480000 );
+					
+				} while( !isStopped );
 				
 				System.out.println( "\ndone");
 				asioStop();
