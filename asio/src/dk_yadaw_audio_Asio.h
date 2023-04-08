@@ -129,26 +129,26 @@ JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioArmOutput
 
 /*
  * Class:     dk_yadaw_audio_Asio
- * Method:    asioPrepBuffers
- * Signature: ()V
- */
-JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioPrepBuffers
-  (JNIEnv *, jobject);
-
-/*
- * Class:     dk_yadaw_audio_Asio
  * Method:    asioSetOutputSamples
- * Signature: ([I)V
+ * Signature: ([[I)I
  */
-JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioSetOutputSamples
-  (JNIEnv *, jobject, jintArray);
+JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioSetOutputSamples
+  (JNIEnv *, jobject, jobjectArray);
 
 /*
  * Class:     dk_yadaw_audio_Asio
  * Method:    asioGetInputSamples
- * Signature: ()[I
+ * Signature: ([[I)I
  */
-JNIEXPORT jintArray JNICALL Java_dk_yadaw_audio_Asio_asioGetInputSamples
+JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioGetInputSamples
+  (JNIEnv *, jobject, jobjectArray);
+
+/*
+ * Class:     dk_yadaw_audio_Asio
+ * Method:    asioPrepBuffers
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioPrepBuffers
   (JNIEnv *, jobject);
 
 /*

@@ -117,7 +117,7 @@ public class Yadaw extends Thread implements DataModelUpdateListenerIf {
 		case YADAW_ASIO_DRIVER_NAME:
 			System.out.println( "Opening: " + ( String )itemData );
 			try {
-				asio.open( model.getAsioDriverName() );
+				asio.openDriver( model.getAsioDriverName() );
 			} catch (AsioException e) {
 				e.printStackTrace();
 			}

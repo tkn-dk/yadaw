@@ -1,10 +1,8 @@
 package dk.yadaw.audio;
 
 import java.io.BufferedOutputStream;
-import java.io.BufferedWriter;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Vector;
@@ -15,7 +13,7 @@ import java.util.Vector;
  * @author tkn
  *
  */
-public class Asio {
+public class Asio implements SoundInStream, SoundOutStream {
 	
 	static {
 		String wd = System.getProperty( "user.dir") + "/" + "libasiojni.dll";
@@ -46,7 +44,19 @@ public class Asio {
 			s = asioGetNextDriver();
 		}
 	}
-	
+
+	@Override
+	public int write(int[] samples) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public int read(int[] samples) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
 	/**
 	 * List ASIO drivers on system.
 	 * @return	Collection of string with driver names.
@@ -60,7 +70,7 @@ public class Asio {
 	 * @param driverName		ASIO driver name from the collection obtained with getDrivers().
 	 * @throws AsioException	If driver cannot be found or initialized.
 	 */
-	public void open( String driverName ) throws AsioException {
+	public void openDriver( String driverName ) throws AsioException {
 		if( !asioLoadDriver( driverName ) ) {
 			throw new AsioException( "Driver \"" + driverName + "\" not found" );
 		}
@@ -86,7 +96,7 @@ public class Asio {
 	public void recordTrack( int channel, String driver, String filename ) {
 		
 		try {
-			open( driver );
+			openDriver( driver );
 		}
 		catch( AsioException ae ) {
 			System.out.println( ae );
@@ -99,63 +109,60 @@ public class Asio {
 		} catch (FileNotFoundException e) {
 			System.out.println( "File path \"" + filename + "\" not found" );
 			return;
-		}
+		}	
 		
-		BufferedOutputStream sampleStream = new BufferedOutputStream( file );
-		int[] secBuffer = new int[2000];
-		int sampleNum = 0;
 		clearArmedChannels();
 		armInput( channel );
-		asioPrepBuffers();
+		if( asioPrepBuffers() < 0 ) {
+			System.out.println( "ASIO Buffer error" );
+			return;
+		};
 		
-		int[] outputBuffer = new int[bufferSize];
+		isStarted = false;
+		
+		int[][] outputBuffer = new int[1][4096];
+		int[][] inputBuffer = new int[1][4096];
+		byte[] bSamples = new byte[3];
 		long samplePos;
-		byte[] bSamples = new byte[2000000];
-		int bsix = 0;
-		do {
-			int[] inputBuffer = exchangeBuffers( outputBuffer );
-			samplePos = asioGetSamplePos();
-			for( int n = 0; n < bufferSize; n++ ) {
-				int s = inputBuffer[n];
-				bSamples[bsix++] = ( byte )(s >> 24);
-				bSamples[bsix++] = ( byte )(s >> 16);
-				bSamples[bsix++] = ( byte )(s >> 8);
+		
+		try (BufferedOutputStream sampleStream = new BufferedOutputStream( file )) {
+			synchronized( this ) {
+				do {
+					asioSetOutputSamples( outputBuffer );
+					if( !isStarted ) {
+						if( asioStart() < 0 )
+						{
+							System.out.println( "Error starting ASIO");
+							return;
+						}
+						isStarted = true;
+					}
+
+					try {
+						wait();
+					} catch (InterruptedException e1) {
+						System.out.println( "Sample wait interrupted" );
+					}
+					
+					int nofSamples = asioGetInputSamples( inputBuffer );
+					samplePos = asioGetSamplePos();
+					
+					for( int n = 0; n < nofSamples; n++ ) {
+						int s = inputBuffer[0][n];
+						bSamples[0] = ( byte )(s >> 24);
+						bSamples[1] = ( byte )(s >> 16);
+						bSamples[2] = ( byte )(s >> 8);
+						sampleStream.write( bSamples );
+					}
+				} while( samplePos < 480000 );
 				
-				if( sampleNum < secBuffer.length ) {
-					secBuffer[sampleNum++] = s;
-				}
+				System.out.println( "\ndone");
+				asioStop();
 			}
-		} while( isStarted && samplePos < 480000 );
-		
-		try {
-			System.out.println( "Writing samples ...");
-			sampleStream.write( bSamples, 0, bsix );
-		} catch (IOException e) {
-			System.out.println( "Error writing to file \"" + filename + "\"" );
-		}
-		
-		System.out.println( "\ndone");
-		asioStop();
-		
-		try {
 			sampleStream.close();
 		} catch (IOException e) {
-			System.out.println( "Error closing file \"" + filename + "\"" );
-		}
-		
-		// Dump samples for debug
-		try {
-			FileWriter sampFile = new FileWriter( "samples.csv" );
-			BufferedWriter sampWriter = new BufferedWriter( sampFile );
-			
-			for( int s : secBuffer )
-			{
-				sampWriter.write( s + ";\n");
-			}
-			sampWriter.close();
-		} catch (IOException e) {
-			System.out.println( "Error opening sample file");
-		}
+			System.out.println( "Error writing to file \"" + filename + "\"" );			
+		}	
 	}
 	
 	public long getSamplePos() {
@@ -218,31 +225,6 @@ public class Asio {
 		asioClearArmedChannels();
 	}
 	
-	/**
-	 * Exchange input and output buffers with ASIO system.
-	 * @param outputBuffer	Linear buffer of sample buffers for output - left adjusted signed integers. Format is { s_ch_n1[bufferSize], s_ch_n2[bufferSize}+] ... } 
-	 * @return inputBuffer	Linear buffer of sample buffers for input. Same format as output buffer. Note that the returned array reference will be
-	 * 						overwritten on next call to exchangeBuffers - so remember to copy data into Sample stream.
-	 */
-	public int[] exchangeBuffers( int[] outputBuffer ) {
-		synchronized( this ) {
-			try {
-				asioSetOutputSamples( outputBuffer );
-				if( !isStarted ) {
-					asioStart();
-					isStarted = true;
-				}				
-				wait();
-				return asioGetInputSamples();
-			}
-			catch( InterruptedException e ) {
-				asioStop();
-				isStarted = false;
-			}
-		}
-		return null;
-	}
-	
 	private native void asioLibInit();
 	private native String asioGetFirstDriver();
 	private native String asioGetNextDriver();
@@ -258,9 +240,9 @@ public class Asio {
 	private native void asioClearArmedChannels();
 	private native void asioArmInput( int ch );
 	private native void asioArmOutput( int ch );
-	private native void asioPrepBuffers();
-	private native void asioSetOutputSamples( int[] outputSamples );
-	private native int[] asioGetInputSamples();
+	private native int asioSetOutputSamples( int[][] outputSamples );
+	private native int asioGetInputSamples( int[][] inputSamples );
+	private native int asioPrepBuffers();
 	private native int asioStart();
 	private native void asioStop();
 	
@@ -283,7 +265,7 @@ public class Asio {
 		if( theDriver != null ) {
 			System.out.println( "Opening driver: " + theDriver );
 			try {
-				as.open(theDriver);
+				as.openDriver(theDriver);
 				System.out.println( "  Number of inputs: " + as.getNofInputs() );
 				System.out.println( "  Number of outputs: " + as.getNofOutputs() );
 				System.out.println( "  Input latency: " + as.getInputLatency() );
