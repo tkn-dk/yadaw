@@ -5,7 +5,7 @@ package dk.yadaw.audio;
  * Interface representing an output stream.
  * @author tkn
  */
-public interface AuidoProducer {
+public interface AudioProducer {
 	/**
 	 * Write samples to the output stream.
 	 * @param samples  	Buffer of samples as 32 bit left adjusted ints.

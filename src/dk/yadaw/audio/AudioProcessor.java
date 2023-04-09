@@ -8,17 +8,23 @@ import java.util.Set;
  * @author tkn
  *
  */
-public abstract class SoundProcessor {
-	private Set<AudioConsumer> inputs;
-	private Set<AuidoProducer> outputs;
+public abstract class AudioProcessor {
+	private Set<AudioProducer> inputs;
+	private Set<AudioConsumer> outputs;
 	
 	/**
 	 * @param inputs	Sound inputs to this sound processor.
 	 * @param outputs	Sound outputs from this sound process.
 	 */
-	public SoundProcessor( Set<AudioConsumer> inputs, Set<AuidoProducer> outputs ) {
-		this.inputs = inputs;
-		this.outputs = outputs;
+	public AudioProcessor() {
+	}
+	
+	public void addProducer( AudioProducer ap ) {
+		inputs.add( ap );
+	}
+	
+	public void addConsumer( AudioConsumer ac ) {
+		outputs.add(ac);
 	}
 	
 	/**
