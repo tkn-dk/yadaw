@@ -16,7 +16,7 @@ import java.util.Vector;
  * @author tkn
  *
  */
-public class Asio implements SoundInStream, SoundOutStream {
+public class Asio implements AudioConsumer, AuidoProducer {
 	
 	static {
 		String wd = System.getProperty( "user.dir") + "/" + "libasiojni.dll";

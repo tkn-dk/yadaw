@@ -3,7 +3,7 @@ package dk.yadaw.audio;
 /**
  * Represents the interface for sound input.
  */
-public interface SoundInStream {
+public interface AudioConsumer {
 	/**
 	 * Reads next buffer of samples. Can be called continously to empty the stream.
 	 * 

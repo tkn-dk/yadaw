@@ -9,14 +9,14 @@ import java.util.Set;
  *
  */
 public abstract class SoundProcessor {
-	private Set<SoundInStream> inputs;
-	private Set<SoundOutStream> outputs;
+	private Set<AudioConsumer> inputs;
+	private Set<AuidoProducer> outputs;
 	
 	/**
 	 * @param inputs	Sound inputs to this sound processor.
 	 * @param outputs	Sound outputs from this sound process.
 	 */
-	public SoundProcessor( Set<SoundInStream> inputs, Set<SoundOutStream> outputs ) {
+	public SoundProcessor( Set<AudioConsumer> inputs, Set<AuidoProducer> outputs ) {
 		this.inputs = inputs;
 		this.outputs = outputs;
 	}
