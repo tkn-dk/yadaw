@@ -5,44 +5,43 @@ package dk.yadaw.audio;
  * @author tkn
  *
  */
-public class AudioTrack implements AudioProducer, AudioConsumer, SyncListener {
+public class AudioTrack  {
 	private String name;
 	private String filePath;
 	private int iteration;
 	private float timeCode;
 	private int peakVal;
+	private AudioStream in;
+	private AudioStream out;
 	
+	/**
+	 * Constructor
+	 * @param name Name of track
+	 * @param filePath Path to store track files
+	 */
 	public AudioTrack( String name, String filePath ) {
 		this.name = name;
 		this.filePath = filePath;
+		iteration = 1;
 	}
 
-	@Override
-	public void audioSync(float timeCode, int bufferPeak) {
-		this.timeCode = timeCode;
-		this.peakVal = bufferPeak;
-	}
-
-	@Override
-	public int read(int[] samples) {
-		// TODO Auto-generated method stub
-		return 0;
-	}
-
-	@Override
-	public int write(int[] samples) {
-		// TODO Auto-generated method stub
-		return 0;
-	}
-	
 	/**
-	 * Playpack track from file.
-	 * @param trackFile - Set to null for using "filePath_name_iteration.raw"
+	 * 
+	 * @param out
+	 * @param trackFile
 	 */
-	public void play( String trackFile ) {
+	public void play( AudioStream out, String trackFile ) {
 		
 	}
 	
+	/**
+	 * 
+	 * @param in
+	 * @param trackFile
+	 */
+	public void record( AudioStream in, String trackFile ) {
+		
+	}
 	
 	public float getTimeCode() {
 		return timeCode;

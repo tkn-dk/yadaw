@@ -1,7 +1,5 @@
 package dk.yadaw.audio;
 
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
 import java.io.BufferedOutputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -16,7 +14,7 @@ import java.util.Vector;
  * @author tkn
  *
  */
-public class Asio implements AudioConsumer, AudioProducer {
+public class Asio {
 	
 	static {
 		String wd = System.getProperty( "user.dir") + "/" + "libasiojni.dll";
@@ -47,18 +45,6 @@ public class Asio implements AudioConsumer, AudioProducer {
 			drivers.add(s);
 			s = asioGetNextDriver();
 		}
-	}
-
-	@Override
-	public int write(int[] samples) {
-		// TODO Auto-generated method stub
-		return 0;
-	}
-
-	@Override
-	public int read(int[] samples) {
-		// TODO Auto-generated method stub
-		return 0;
 	}
 
 	/**

@@ -9,8 +9,8 @@ import java.util.Set;
  *
  */
 public abstract class AudioProcessor {
-	private Set<AudioProducer> inputs;
-	private Set<AudioConsumer> outputs;
+	private Set<AudioStream> inputs;
+	private Set<AudioStream> outputs;
 	
 	/**
 	 * @param inputs	Sound inputs to this sound processor.
@@ -19,12 +19,12 @@ public abstract class AudioProcessor {
 	public AudioProcessor() {
 	}
 	
-	public void addProducer( AudioProducer ap ) {
-		inputs.add( ap );
+	public void addInput( AudioStream in ) {
+		inputs.add( in );
 	}
 	
-	public void addConsumer( AudioConsumer ac ) {
-		outputs.add(ac);
+	public void addOutput( AudioStream out ) {
+		outputs.add(out);
 	}
 	
 	/**
