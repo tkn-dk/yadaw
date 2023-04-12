@@ -11,7 +11,7 @@
 
 using namespace std;
 
-#define PLAYBACK_BUFFER_SIZE	0x20000
+#define CIRC_BUFFER_SIZE	4096
 
 struct AsioContext
 {
@@ -384,7 +384,7 @@ JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioPrepBuffers(JNIEnv *env, job
 		asioCtx.sampleContainer = nullptr;
 	}
 
-	asioCtx.sampleContainer = new YSampleContainer( asioCtx.armedInputsMask, asioCtx.armedOutputsMask, 24000 );
+	asioCtx.sampleContainer = new YSampleContainer( asioCtx.armedInputsMask, asioCtx.armedOutputsMask, CIRC_BUFFER_SIZE );
 	return 0;
 }
 

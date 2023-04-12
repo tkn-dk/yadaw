@@ -6,33 +6,36 @@ import java.util.Set;
 /**
  * Represents an audio stream.
  */
-public class AudioStream implements SyncListener {
+public class AudioStream {
 	private final int nofBuffers = 4;
 	private int[][] streamBuffers;
+	private long[] samplePos;
 	int wb;
 	int rb;
 	private Set<SyncListener> syncListeners;
 	
 	public AudioStream( ) {
 		streamBuffers = new int[nofBuffers][];
+		samplePos = new long[nofBuffers];
 		syncListeners = new HashSet<SyncListener>();
 		wb = 0;
 		rb = 0;
 	}
 	
-	public boolean read( int[] samples ) {
-		if( rb == wb ) {
-			return false;
+	public long read( int[] samples ) {
+		long spos = 0;
+		if( rb != wb ) {
+			spos = samplePos[rb];
+			samples = streamBuffers[rb++];
+			if( rb == nofBuffers )
+			{
+				rb = 0;
+			}
 		}
-		samples = streamBuffers[rb++];
-		if( rb == nofBuffers )
-		{
-			rb = 0;
-		}
-		return true;
+		return spos;
 	}
 	
-	public boolean write( int[] samples ) {
+	public boolean write( int[] samples, long samplePos ) {
 		int nwb = wb + 1;
 		if( nwb == nofBuffers ) {
 			nwb = 0;
@@ -51,9 +54,9 @@ public class AudioStream implements SyncListener {
 		syncListeners.add(sl);
 	}
 	
-	public void audioSync( float timeCode, long samplePos, int peakVal ) {
+	public void sync( ) {
 		for( SyncListener s : syncListeners ) {
-			s.audioSync(timeCode, samplePos, peakVal);
+			s.audioSync( this );
 		}
 	}
 	

@@ -1,12 +1,9 @@
 package dk.yadaw.audio;
 
-import java.io.BufferedOutputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.text.DecimalFormat;
 import java.util.Collection;
 import java.util.Vector;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Class holding ASIO interface.
@@ -24,7 +21,7 @@ public class Asio {
 	
 	private boolean isStarted;
 	private boolean isStopped;
-	private double samplerate;
+	private float samplerate;
 	private int bufferSize;
 	private int outputLatency;
 	private int inputLatency;
@@ -33,11 +30,16 @@ public class Asio {
 	private int nofActivatedInputs;
 	private int nofActivatedOutputs;
 	private Collection<String> drivers;
+	private AudioStream[] inputStreams;
+	private AudioStream[] outputStreams;
+	private Thread bufferSwitchThread;
+	private ExecutorService xService;
 	
 	/**
 	 * Construct class and initialize the native library. 
 	 */
 	public Asio() {
+		xService = Executors.newFixedThreadPool(16);
 		asioLibInit();
 		drivers = new Vector<String>();
 		String s = asioGetFirstDriver();
@@ -69,7 +71,7 @@ public class Asio {
 			throw new AsioException( "Asio init of driver \"" + driverName + "\" failed" );
 		}
 		
-		samplerate = asioGetSamplerate();
+		samplerate = ( float )asioGetSamplerate();
 		bufferSize = asioGetBufferSize();
 		outputLatency = asioGetOutputLatency();
 		inputLatency = asioGetInputLatency();
@@ -77,97 +79,120 @@ public class Asio {
 		nofOutputs = asioGetAvailableOutputs();
 		nofActivatedOutputs = 0;
 		nofActivatedInputs = 0;
+		
+		inputStreams = new AudioStream[nofInputs];
+		outputStreams = new AudioStream[nofOutputs];
 	}
 	
-	public double getSamplerate() {
+
+	/**
+	 * Set ASIO input stream to a device input channel. 
+	 * On ASIO buffer switch the audioSync method of the stream will
+	 * be called.
+	 * @param ch 		Asio Device input channel
+	 * @param inStream	Stream. Input samples will be written to this stream.
+	 * @return			true on success.
+	 */
+	public boolean setInput( int ch, AudioStream inStream ) {
+		if( ch < inputStreams.length ) {
+			inputStreams[ch] = inStream;
+			asioArmInput( ch );
+			nofActivatedInputs++;
+			return true;
+		}
+		return false;
+	}
+	
+	/**
+	 * Set ASIO output stream to device output channel.
+	 * On ASIO buffer switch the audioSync method of the stream will be called.
+	 * @param ch
+	 * @param outStream
+	 * @return
+	 */
+	public boolean setOutput( int ch, AudioStream outStream ) {
+		if( ch < outputStreams.length ) {
+			outputStreams[ch] = outStream;
+			asioArmOutput( ch );
+			nofActivatedOutputs++;
+			return true;
+		}
+		return false;
+	}
+	
+	public float getSamplerate() {
 		return samplerate;
 	}
 	
-	public void recordTrack( int channel, String driver, String filename ) {
-		
+	public boolean start( String driver ) {		
 		try {
 			openDriver( driver );
 		}
 		catch( AsioException ae ) {
 			System.out.println( ae );
-			return;
+			return false;
 		}
 		
-		FileOutputStream file;
-		try {
-			file = new FileOutputStream( filename );
-		} catch (FileNotFoundException e) {
-			System.out.println( "File path \"" + filename + "\" not found" );
-			return;
-		}	
-				
-		clearArmedChannels();
-		armInput( channel );
 		if( asioPrepBuffers() < 0 ) {
 			System.out.println( "ASIO Buffer error" );
-			return;
+			return false;
 		};
 		
 		isStarted = false;
 		isStopped = false;
 		
-		int[][] outputBuffer = new int[1][4096];
-		int[][] inputBuffer = new int[1][4096];
-		byte[] bSamples = new byte[3];
-		long samplePos;
-		int samplePosUpdateInterval = (( int )samplerate / 10) / bufferSize;  // 10 for 100ms update interval
-		int sampleUpdate = 0;
-		DecimalFormat tdf = new DecimalFormat( "#.##" );
-		System.out.println( "samplePosUpdateInterval: " + samplePosUpdateInterval);
-		
-		try (BufferedOutputStream sampleStream = new BufferedOutputStream( file )) {
-			synchronized( this ) {
-				do {
-					asioSetOutputSamples( outputBuffer );
-					if( !isStarted ) {
-						if( asioStart() < 0 )
-						{
-							System.out.println( "Error starting ASIO");
-							return;
-						}
-						isStarted = true;
-					}
-
-					try {
-						wait();
-					} catch (InterruptedException e1) {
-						System.out.println( "Sample wait interrupted" );
-					}
-					
-					int nofSamples = asioGetInputSamples( inputBuffer );
-					
-					if( ++sampleUpdate >= samplePosUpdateInterval ) {
-						samplePos = asioGetSamplePos();
-						double t = ( double )samplePos / samplerate;
-						System.out.print( "\rT: " + tdf.format(t));
-						if( System.in.available() > 0 ) {
-							isStopped = true;
-						}
-						sampleUpdate = 0;
-					}
-					
-					for( int n = 0; n < nofSamples; n++ ) {
-						int s = inputBuffer[0][n];
-						bSamples[0] = ( byte )(s >> 24);
-						bSamples[1] = ( byte )(s >> 16);
-						bSamples[2] = ( byte )(s >> 8);
-						sampleStream.write( bSamples );
-					}
-					
-				} while( !isStopped );
+		bufferSwitchThread = new Thread(){
+			@Override
+			public void run() {
+				int[][] outputBuffer = new int[nofActivatedOutputs][4096];
+				int[][] inputBuffer = new int[nofActivatedInputs][4096];
 				
-				System.out.println( "\ndone");
-				asioStop();
+				synchronized( this ) {
+					do {
+						int bufNum = 0;
+						for( int n = 0; n < nofOutputs; n++ ) {
+							if( outputStreams[n] != null  ) {
+								if( outputStreams[n].read( outputBuffer[bufNum++] ) == 0 ) {
+									System.out.println( "Bufferswitch Output buffer underrun!" );
+								}
+							}
+						}
+						asioSetOutputSamples( outputBuffer );
+						
+						if( !isStarted ) {
+							if( asioStart() < 0 )
+							{
+								System.out.println( "Error starting ASIO");
+								return;
+							}
+							isStarted = true;
+						}
+
+						try {
+							wait();
+						} catch (InterruptedException e1) {
+							System.out.println( "Sample wait interrupted" );
+						}
+						int nofSamples = asioGetInputSamples( inputBuffer );
+						updateInputStreams( inputBuffer, nofSamples );
+					} while( !isStopped );
+					
+					System.out.println( "\ndone");
+					asioStop();
+				}
 			}
-			sampleStream.close();
-		} catch (IOException e) {
-			System.out.println( "Error writing to file \"" + filename + "\"" );			
-		}	
+		};
+		bufferSwitchThread.start();
+		return true;
+	}
+		
+	public void stop() {
+		isStopped = true;
+		try {
+			bufferSwitchThread.join();
+		} catch (InterruptedException e) {
+			System.out.println( "Interrupted waiting on bufferSwitchThread to terminate");
+		}
 	}
 	
 	public long getSamplePos() {
@@ -210,24 +235,26 @@ public class Asio {
 		return nofActivatedOutputs;
 	}
 	
-	/**
-	 * Activates an input so its input samples will be added to the buffer. 
-	 * @param ch	Channel num - zero based.
-	 */
-	public void armInput( int ch ) {
-		asioArmInput( ch );
+	private void notifySample() {
+		this.notify();
 	}
 	
-	/**
-	 * Activates an output, data must be added to outputbuffer.
-	 * @param ch
-	 */
-	public void armOutput( int ch ) {
-		asioArmOutput( ch );
-	}
-	
-	public void clearArmedChannels() {
-		asioClearArmedChannels();
+	private void updateInputStreams( int[][] samples, int nofSamples ) {
+		long pos = asioGetSamplePos();
+		int bufNum = 0;
+		for( AudioStream stream : inputStreams ) {
+			if( stream != null ) {
+				int[] inBufCopy = new int[nofSamples];
+				System.arraycopy( samples[bufNum], 0, inBufCopy, 0, nofSamples );
+				if( stream.write( inBufCopy, pos )) {
+					xService.submit( () -> stream.sync());
+				}
+				else {
+					System.out.println( "Bufferswitch Input Buffer overrun");
+				}
+				bufNum++;
+			}
+		}
 	}
 	
 	private native void asioLibInit();
@@ -251,9 +278,6 @@ public class Asio {
 	private native int asioStart();
 	private native void asioStop();
 	
-	private void notifySample() {
-		this.notify();
-	}
 	
 	public static void main( String args[] ) {
 		System.out.println( "ASIO test" );
@@ -277,16 +301,6 @@ public class Asio {
 				System.out.println( "  Output latency: " + as.asioGetOutputLatency() );
 				System.out.println( "  SampleRate: " + as.getSamplerate() );
 				System.out.println( "  Buffer size: " + as.getBufferSize() );
-
-				if( args.length > 1 ) {
-					if( args[0].equalsIgnoreCase( "play" )) {
-						System.out.println( "playback: " + args[1] );
-					}
-					else if( args[0].equalsIgnoreCase( "record" )) {
-						System.out.println( "record: " + args[1] );
-						as.recordTrack(0, theDriver, args[1] );
-					}				
-				}
 			} catch (AsioException e) {
 				e.printStackTrace();
 			}			
