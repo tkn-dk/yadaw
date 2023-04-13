@@ -32,6 +32,7 @@ public class AudioStream {
 				rb = 0;
 			}
 		}
+		samples = null;
 		return spos;
 	}
 	
