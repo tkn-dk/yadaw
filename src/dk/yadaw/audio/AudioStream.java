@@ -8,35 +8,34 @@ import java.util.Set;
  */
 public class AudioStream {
 	private final int nofBuffers = 4;
-	private int[][] streamBuffers;
-	private long[] samplePos;
+	private AudioStreamBuffer[] streamBuffers;
 	int wb;
 	int rb;
 	private Set<SyncListener> syncListeners;
 	
 	public AudioStream( ) {
-		streamBuffers = new int[nofBuffers][];
-		samplePos = new long[nofBuffers];
+		streamBuffers = new AudioStreamBuffer[nofBuffers];
+		for( int n = 0; n < streamBuffers.length; n++ ) {
+			streamBuffers[n] = new AudioStreamBuffer();
+		}
 		syncListeners = new HashSet<SyncListener>();
 		wb = 0;
 		rb = 0;
 	}
 	
-	public long read( int[] samples ) {
-		long spos = 0;
+	public AudioStreamBuffer read() {
+		AudioStreamBuffer abuf = null;
 		if( rb != wb ) {
-			spos = samplePos[rb];
-			samples = streamBuffers[rb++];
+			abuf = streamBuffers[rb++];
 			if( rb == nofBuffers )
 			{
 				rb = 0;
 			}
 		}
-		samples = null;
-		return spos;
+		return abuf;
 	}
 	
-	public boolean write( int[] samples, long samplePos ) {
+	public boolean write( int[] samples, long spos ) {
 		int nwb = wb + 1;
 		if( nwb == nofBuffers ) {
 			nwb = 0;
@@ -47,7 +46,8 @@ public class AudioStream {
 		}
 		
 		wb = nwb;
-		streamBuffers[wb] = samples;
+		streamBuffers[wb].setSamplePos(spos);
+		streamBuffers[wb].setBuffer(samples);
 		return true;
 	}
 	

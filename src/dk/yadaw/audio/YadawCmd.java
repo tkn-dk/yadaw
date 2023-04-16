@@ -1,9 +1,12 @@
 package dk.yadaw.audio;
 
+import java.io.IOException;
 import java.util.Collection;
 
 public class YadawCmd {
 	private Asio asio; 
+	private Thread asioThread;
+	private int sampleRate;
 	
 	public YadawCmd() {
 		asio = new Asio();
@@ -17,6 +20,7 @@ public class YadawCmd {
 		
 		try {
 			asio.openDriver(driverName);
+			sampleRate = ( int )asio.getSamplerate();
 		} catch (AsioException e) {
 			System.out.println( e );
 			return false;
@@ -26,10 +30,46 @@ public class YadawCmd {
 	}
 	
 	public void record( String fileName, int channel ) {
-		AudioTrack track = new AudioTrack();
+		AudioTrack track = new AudioTrack( sampleRate );
 		AudioStream rstream = new AudioStream();
-		asio.setInput( channel, rstream);
+		asio.connectOutput( channel, rstream);
 		track.setInput(rstream);
+		
+		try {
+			track.recordStart(fileName);
+		} catch (IOException e1) {
+			System.out.println( "Could not write trackfile: " + fileName );
+		}
+
+		asioThread = new Thread() {
+
+			@Override
+			public void run() {
+				if( !asio.start() ) {
+					System.out.println( "Asio start error ");
+					return;
+				}
+			}
+			
+		};
+		asioThread.start();
+		System.out.println( "Press enter to stop recording");
+		try {
+			System.in.read();
+		} catch (IOException e) {
+			System.out.println( "  system in error" );
+		}
+		System.out.println( "Stopping");
+		asio.stop();
+		track.recordStop();
+		
+		try {
+			asioThread.interrupt();
+			asioThread.join();
+			System.out.println( "Asio thread joined");
+		} catch (InterruptedException e) {
+			System.out.println( "ASIO thread join interrupted" );
+		}		
 	}
 	
 	public void play( String fileName, int channel ) {
@@ -54,6 +94,7 @@ public class YadawCmd {
 				switch (recPlay.toLowerCase()) {
 				case "record":
 					ycmd.record(fileName, ch);
+					System.out.println( "YadawCmd record return");
 					break;
 
 				case "play":

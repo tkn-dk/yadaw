@@ -41,17 +41,16 @@ struct AsioContext
 	jintArray jniReturnSampleBuffer;
 	YSampleContainer *sampleContainer;
 	bool isFirstInputSampleBuf;				// First buffer with input samples is crap.
+	JavaVM *jvm;
+	jobject monitorObject;
+	jmethodID notifyMethod;
 };
 
-AsioContext asioCtx = {0};
+AsioContext asioCtx;
 
-static JavaVM *jvm = NULL;
-static jobject parentObject = NULL;
-static jmethodID notifyMethod = NULL;
 
 LPASIODRVSTRUCT findDriver( AsioDrivers *adrv, const string asioDriverName );
 void errString( ASIOError err );
-void prepBuffers();
 void prepCallbacks();
 void notifySample();
 
@@ -71,6 +70,11 @@ BOOL WINAPI DllMain(
     {
         case DLL_PROCESS_ATTACH:
         	printf( "AsioJNI attach\n");
+        	if( asioCtx.asioDrivers )
+        	{
+        		delete asioCtx.asioDrivers;
+        	}
+        	asioCtx = {0};
         	asioCtx.asioDrivers = new AsioDrivers();
             break;
 
@@ -84,11 +88,12 @@ BOOL WINAPI DllMain(
 
         case DLL_PROCESS_DETACH:
         	printf( "AsioJNI unload\n" );
-        	if( asioCtx.asioDrivers )
+        	/*if( asioCtx.asioDrivers )
         	{
         		asioCtx.asioDrivers->removeCurrentDriver();
         	}
         	delete asioCtx.asioDrivers;
+        	*/
             break;
     }
     fflush( stdout );
@@ -100,10 +105,10 @@ JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioLibInit(JNIEnv *env, jobject
 	jclass parentClass;
 
 	printf( "ASIO lib init\n" );
-	env->GetJavaVM( &jvm );
+	env->GetJavaVM( &asioCtx.jvm );
 	parentClass = env->FindClass( "dk/yadaw/audio/Asio" );
-	parentObject = env->NewGlobalRef( thisobj );
-	notifyMethod = env->GetMethodID( parentClass, "notifySample", "()V");
+	asioCtx.monitorObject = env->NewGlobalRef( thisobj );
+	asioCtx.notifyMethod = env->GetMethodID( parentClass, "notifySample", "()V");
 }
 
 JNIEXPORT jstring JNICALL Java_dk_yadaw_audio_Asio_asioGetFirstDriver(JNIEnv *env, jobject thisobj)
@@ -588,18 +593,18 @@ void prepCallbacks()
 void notifySample()
 {
     JNIEnv* env;
-    int getEnvResult = jvm->GetEnv((void**)&env, JNI_VERSION_1_6);
+    int getEnvResult = asioCtx.jvm->GetEnv((void**)&env, JNI_VERSION_1_6);
     if (getEnvResult == JNI_EDETACHED) {
-        jvm->AttachCurrentThread((void**)&env, NULL);
+        asioCtx.jvm->AttachCurrentThread((void**)&env, NULL);
     } else if (getEnvResult == JNI_EVERSION) {
         printf( "JNI version error\n" );
     }
 
-    env->MonitorEnter( parentObject );
-    env->CallVoidMethod(parentObject, notifyMethod);
-    env->MonitorExit( parentObject );
+    env->MonitorEnter( asioCtx.monitorObject );
+    env->CallVoidMethod( asioCtx.monitorObject, asioCtx.notifyMethod);
+    env->MonitorExit( asioCtx.monitorObject );
 
     if (getEnvResult == JNI_EDETACHED) {
-        jvm->DetachCurrentThread();
+        asioCtx.jvm->DetachCurrentThread();
     }
 }

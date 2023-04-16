@@ -32,15 +32,14 @@ public class Asio {
 	private Collection<String> drivers;
 	private AudioStream[] inputStreams;
 	private AudioStream[] outputStreams;
-	private Thread bufferSwitchThread;
 	private ExecutorService xService;
 	
 	/**
 	 * Construct class and initialize the native library. 
 	 */
 	public Asio() {
-		xService = Executors.newFixedThreadPool(16);
 		asioLibInit();
+		xService = Executors.newFixedThreadPool(4);
 		drivers = new Vector<String>();
 		String s = asioGetFirstDriver();
 		while( s != null ) {
@@ -86,35 +85,37 @@ public class Asio {
 	
 
 	/**
-	 * Set ASIO input stream to a device input channel. 
+	 * Connect input stream to the device output channel. 
 	 * On ASIO buffer switch the audioSync method of the stream will
 	 * be called.
-	 * @param ch 		Asio Device input channel
-	 * @param inStream	Stream. Input samples will be written to this stream.
+	 * @param ch 		Asio Device output channel
+	 * @param inStream	Samples to the device analog out will be read from
+	 * 					this stream by the Asio class.
 	 * @return			true on success.
 	 */
-	public boolean setInput( int ch, AudioStream inStream ) {
-		if( ch < inputStreams.length ) {
-			inputStreams[ch] = inStream;
-			asioArmInput( ch );
-			nofActivatedInputs++;
+	public boolean connectInput( int ch, AudioStream inStream ) {
+		if( ch < outputStreams.length ) {
+			outputStreams[ch] = inStream;
+			asioArmOutput( ch );
+			nofActivatedOutputs++;
 			return true;
 		}
 		return false;
 	}
 	
 	/**
-	 * Set ASIO output stream to device output channel.
+	 * Connect AudioStream to the device input channel.
 	 * On ASIO buffer switch the audioSync method of the stream will be called.
-	 * @param ch
-	 * @param outStream
-	 * @return
+	 * @param ch			Asio device input channel
+	 * @param outStream		Samples from the asio device analog input will be written to
+	 * 						this stream by the Asio class.
+	 * @return				true on success.
 	 */
-	public boolean setOutput( int ch, AudioStream outStream ) {
+	public boolean connectOutput( int ch, AudioStream outStream ) {
 		if( ch < outputStreams.length ) {
-			outputStreams[ch] = outStream;
-			asioArmOutput( ch );
-			nofActivatedOutputs++;
+			inputStreams[ch] = outStream;
+			asioArmInput( ch );
+			nofActivatedInputs++;
 			return true;
 		}
 		return false;
@@ -124,15 +125,7 @@ public class Asio {
 		return samplerate;
 	}
 	
-	public boolean start( String driver ) {		
-		try {
-			openDriver( driver );
-		}
-		catch( AsioException ae ) {
-			System.out.println( ae );
-			return false;
-		}
-		
+	public boolean start() {		
 		if( asioPrepBuffers() < 0 ) {
 			System.out.println( "ASIO Buffer error" );
 			return false;
@@ -140,59 +133,52 @@ public class Asio {
 		
 		isStarted = false;
 		isStopped = false;
-		
-		bufferSwitchThread = new Thread(){
-			@Override
-			public void run() {
-				int[][] outputBuffer = new int[nofActivatedOutputs][4096];
-				int[][] inputBuffer = new int[nofActivatedInputs][4096];
-				
-				synchronized( this ) {
-					do {
-						int bufNum = 0;
-						for( int n = 0; n < nofOutputs; n++ ) {
-							if( outputStreams[n] != null  ) {
-								if( outputStreams[n].read( outputBuffer[bufNum++] ) == 0 ) {
-									System.out.println( "Bufferswitch Output buffer underrun!" );
-								}
-							}
-						}
-						asioSetOutputSamples( outputBuffer );
-						
-						if( !isStarted ) {
-							if( asioStart() < 0 )
-							{
-								System.out.println( "Error starting ASIO");
-								return;
-							}
-							isStarted = true;
-						}
 
-						try {
-							wait();
-						} catch (InterruptedException e1) {
-							System.out.println( "Sample wait interrupted" );
+		int[][] outputBuffer = new int[nofActivatedOutputs][4096];
+		int[][] inputBuffer = new int[nofActivatedInputs][4096];
+
+		synchronized (this) {
+			do {
+				int bufNum = 0;
+				for (int n = 0; n < nofOutputs; n++) {
+					if (outputStreams[n] != null) {
+						AudioStreamBuffer abuf = outputStreams[n].read();
+						if( abuf != null ) {
+							outputBuffer[bufNum++] = abuf.getBuffer();
 						}
-						int nofSamples = asioGetInputSamples( inputBuffer );
-						updateInputStreams( inputBuffer, nofSamples );
-					} while( !isStopped );
-					
-					System.out.println( "\ndone");
-					asioStop();
+						else {
+							System.out.println("Bufferswitch Output buffer underrun!");
+						}
+					}
 				}
-			}
-		};
-		bufferSwitchThread.start();
+				asioSetOutputSamples(outputBuffer);
+
+				if (!isStarted) {
+					if (asioStart() < 0) {
+						System.out.println("Error starting ASIO");
+						return false;
+					}
+					isStarted = true;
+				}
+
+				try {
+					wait();
+				} catch (InterruptedException e1) {
+					System.out.println("Sample wait interrupted");
+				}
+				int nofSamples = asioGetInputSamples(inputBuffer);
+				updateInputStreams(inputBuffer, nofSamples);
+			} while (!isStopped);
+
+			xService.shutdown();
+			asioStop();
+			System.out.println("Asio thread done");
+		}
 		return true;
 	}
 		
 	public void stop() {
 		isStopped = true;
-		try {
-			bufferSwitchThread.join();
-		} catch (InterruptedException e) {
-			System.out.println( "Interrupted waiting on bufferSwitchThread to terminate");
-		}
 	}
 	
 	public long getSamplePos() {
@@ -236,7 +222,7 @@ public class Asio {
 	}
 	
 	private void notifySample() {
-		this.notify();
+		notify();
 	}
 	
 	private void updateInputStreams( int[][] samples, int nofSamples ) {
