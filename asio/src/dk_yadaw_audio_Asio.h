@@ -145,6 +145,22 @@ JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioGetInputSamples
 
 /*
  * Class:     dk_yadaw_audio_Asio
+ * Method:    asioFreeOutputSamples
+ * Signature: (I)I
+ */
+JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioFreeOutputSamples
+  (JNIEnv *, jobject, jint);
+
+/*
+ * Class:     dk_yadaw_audio_Asio
+ * Method:    asioFreeInputSamples
+ * Signature: (I)I
+ */
+JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioFreeInputSamples
+  (JNIEnv *, jobject, jint);
+
+/*
+ * Class:     dk_yadaw_audio_Asio
  * Method:    asioPrepBuffers
  * Signature: ()I
  */

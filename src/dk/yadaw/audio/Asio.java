@@ -134,7 +134,7 @@ public class Asio {
 		isStarted = false;
 		isStopped = false;
 
-		int[][] outputBuffer = new int[nofActivatedOutputs][4096];
+		int[][] outputBuffer = new int[nofActivatedOutputs][];
 		int[][] inputBuffer = new int[nofActivatedInputs][4096];
 
 		synchronized (this) {
@@ -142,13 +142,15 @@ public class Asio {
 				int bufNum = 0;
 				for (int n = 0; n < nofOutputs; n++) {
 					if (outputStreams[n] != null) {
-						AudioStreamBuffer abuf = outputStreams[n].read();
-						if( abuf != null ) {
-							outputBuffer[bufNum++] = abuf.getBuffer();
+						// There must be enough room in output buffer to take the entire array
+						int available = outputStreams[n].availableNextRead();
+						if ( available > 0 && available < asioFreeOutputSamples(n)) {
+							outputBuffer[bufNum] = outputStreams[n].read().getBuffer();
 						}
 						else {
-							System.out.println("Bufferswitch Output buffer underrun!");
+							outputBuffer[bufNum] = null;
 						}
+						bufNum++;
 					}
 				}
 				asioSetOutputSamples(outputBuffer);
@@ -260,6 +262,8 @@ public class Asio {
 	private native void asioArmOutput( int ch );
 	private native int asioSetOutputSamples( int[][] outputSamples );
 	private native int asioGetInputSamples( int[][] inputSamples );
+	private native int asioFreeOutputSamples( int channel );
+	private native int asioFreeInputSamples( int channel );
 	private native int asioPrepBuffers();
 	private native int asioStart();
 	private native void asioStop();

@@ -11,6 +11,15 @@ public:
 	YCircBuf( size_t size );
 	~YCircBuf();
 
+	size_t free()
+	{
+		if( rdp > wrp )
+		{
+			return rdp - wrp - 1;
+		}
+		return bufSize - wrp+ rdp - 1;
+	}
+
 	bool isEmpty()
 	{
 		return ( rdp == wrp );
@@ -24,7 +33,7 @@ public:
 		return ( nextWp == rdp );
 	}
 
-	bool write( T element )
+	bool write( const T& element )
 	{
 		unsigned int nextWp = wrp + 1;
 		if( nextWp >= bufSize )

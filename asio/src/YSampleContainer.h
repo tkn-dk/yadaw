@@ -34,6 +34,16 @@ public:
 		return outputBuffers[outputChannelMap[channel]]->write( sample );
 	}
 
+	size_t availableInputBufferCapacity( uint32_t channel )
+	{
+		return inputBuffers[inputChannelMap[channel]]->free();
+	}
+
+	size_t availableOutputBufferCapacity( uint32_t channel )
+	{
+		return outputBuffers[outputChannelMap[channel]]->free();
+	}
+
 	YCircBuf<long> **getInputBuffers()
 	{
 		return inputBuffers;

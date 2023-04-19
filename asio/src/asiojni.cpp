@@ -245,7 +245,7 @@ JNIEXPORT void JNICALL Java_dk_yadaw_audio_Asio_asioArmOutput(JNIEnv *env, jobje
 
 JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioSetOutputSamples(JNIEnv *env, jobject thisobj, jobjectArray outputSamples )
 {
-	jsize nofIntBuffers =  env->GetArrayLength( outputSamples );
+	jsize nofIntBuffers = env->GetArrayLength( outputSamples );
 	int nofSamples = 0;
 
 	if( nofIntBuffers == asioCtx.nofArmedOutputs )
@@ -256,18 +256,21 @@ JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioSetOutputSamples(JNIEnv *env
 	    for (int ch = 0; ch < nofIntBuffers; ch++)
 	    {
 	        chs[ch] = (jintArray) env->GetObjectArrayElement(outputSamples, ch);
-	        jint *samples = env->GetIntArrayElements(chs[ch], NULL);
-	        for (int sample = 0; sample < env->GetArrayLength(chs[ch]); sample++)
-	        {
-	        	long s = samples[sample];
-	        	if( !outputBuffers[ch]->write( s ) )
-	        	{
-	        		nofSamples = sample;
-	        		break;
-	        	}
-	        }
-	        env->ReleaseIntArrayElements(chs[ch], samples, 0);
-	    }
+			if (chs[ch] != nullptr )
+			{
+				jint *samples = env->GetIntArrayElements(chs[ch], NULL);
+				for (int sample = 0; sample < env->GetArrayLength(chs[ch]);	sample++)
+				{
+					long s = samples[sample];
+					if (!outputBuffers[ch]->write(s))
+					{
+						nofSamples = sample;
+						break;
+					}
+				}
+				env->ReleaseIntArrayElements(chs[ch], samples, 0);
+			}
+		}
 	    delete[] chs;
 	}
 	else if( asioCtx.nofArmedOutputs > 0 )
@@ -313,6 +316,17 @@ JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioGetInputSamples(JNIEnv *env,
 	}
 	return nofSamples;
 }
+
+JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioFreeOutputSamples(JNIEnv *env, jobject, jint channel )
+{
+	return ( jint )asioCtx.sampleContainer->availableOutputBufferCapacity( channel );
+}
+
+JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioFreeInputSamples(JNIEnv *end, jobject, jint channel )
+{
+	return (jint )asioCtx.sampleContainer->availableInputBufferCapacity( channel );
+}
+
 JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioPrepBuffers(JNIEnv *env, jobject thisobject )
 {
 	int nofArmedOutputs = 0;
@@ -517,8 +531,8 @@ ASIOTime* bufferSwitchTimeInfo(ASIOTime* params, long doubleBufferIndex, ASIOBoo
 			for( int s = 0; s < asioCtx.sampleBufferSize; s++ )
 			{
 				long sample;
-				asioCtx.sampleContainer->extractOutputSample( asioCtx.buffers[bix].channelNum, sample );
-				*( ( long *)asioCtx.buffers[bix].buffers[doubleBufferIndex] + s ) = sample;
+				bool hasSample = asioCtx.sampleContainer->extractOutputSample( asioCtx.buffers[bix].channelNum, sample );
+				*( ( long *)asioCtx.buffers[bix].buffers[doubleBufferIndex] + s ) = hasSample ? sample : 0;
 			}
 		}
 	}

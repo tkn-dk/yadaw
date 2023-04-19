@@ -35,20 +35,33 @@ public class AudioStream {
 		return abuf;
 	}
 	
+	public int availableNextRead() {
+		if( rb != wb ) {
+			return streamBuffers[rb].getBuffer().length;
+		}
+		return 0;
+	}
+	
 	public boolean write( int[] samples, long spos ) {
+		if( !isFull() ) {
+			wb = nwb;
+			streamBuffers[wb].setSamplePos(spos);
+			streamBuffers[wb].setBuffer(samples);
+			return true;
+		}
+		return false;
+	}
+	
+	public boolean isFull() {
 		int nwb = wb + 1;
 		if( nwb == nofBuffers ) {
 			nwb = 0;
 		}
 		
 		if( nwb == rb ) {
-			return false;
+			return true;
 		}
-		
-		wb = nwb;
-		streamBuffers[wb].setSamplePos(spos);
-		streamBuffers[wb].setBuffer(samples);
-		return true;
+		return false;
 	}
 	
 	public void addSyncListener( SyncListener sl ) {

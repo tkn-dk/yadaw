@@ -2,9 +2,11 @@ package dk.yadaw.audio;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.text.DecimalFormat;
 import java.util.Scanner;
@@ -24,6 +26,7 @@ public class AudioTrack implements SyncListener {
 	private int sampleRate;
 	private DecimalFormat df;
 	private int posd;
+	private int[] tempOutSamples;
 
 	/**
 	 * Constructor
@@ -33,6 +36,7 @@ public class AudioTrack implements SyncListener {
 	 */
 	public AudioTrack(int sampleRate) {
 		fileBytes = new byte[3];
+		tempOutSamples = new int[1024];
 		this.sampleRate = sampleRate;
 		df = new DecimalFormat("#.###");
 	}
@@ -68,12 +72,34 @@ public class AudioTrack implements SyncListener {
 				}
 			}
 		}
+		
+		if( s == out && fileInStream != null ) {
+			while( !out.isFull() ) {
+				int n = 0;
+				synchronized( fileInStream ) {
+					try {
+						while( n < tempOutSamples.length ) {
+							int rdlen = fileInStream.read(fileBytes);
+							if( rdlen == fileBytes.length ) {
+								tempOutSamples[n++] = ( fileBytes[0] << 24 ) | ( fileBytes[1] << 16 ) | ( fileBytes[2] << 8 );
+							}
+							else {
+								
+							}
+						}
+					}
+					catch ( IOException e ) {
+						
+					}
+				}	
+			}
+		}
 	}
 
 	public void recordStart(String trackFile) throws IOException {
 		if (in != null) {
 			try {
-				System.out.println("Opening file: " + trackFile);
+				System.out.println("Opening record file: " + trackFile);
 				OutputStream file = new FileOutputStream(trackFile);
 				fileOutStream = new BufferedOutputStream(file);
 			} catch (FileNotFoundException e) {
@@ -93,6 +119,21 @@ public class AudioTrack implements SyncListener {
 			} catch (IOException e) {
 				System.out.println("Error closing track file");
 			}
+		}
+	}
+	
+	public void playbackStart( String trackFile ) throws IOException {
+		if( out != null ) {
+			try {
+				System.out.println("Opening playback file: " + trackFile);
+				InputStream file = new FileInputStream(trackFile);
+				fileInStream = new BufferedInputStream(file);
+			} catch (FileNotFoundException e) {
+				System.out.println("Not found: " + trackFile);
+				return;
+			}
+		} else {
+			System.out.println("No output stream for playback");
 		}
 	}
 
