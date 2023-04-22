@@ -41,18 +41,7 @@ public class YadawCmd {
 			System.out.println( "Could not write trackfile: " + fileName );
 		}
 
-		asioThread = new Thread() {
-
-			@Override
-			public void run() {
-				if( !asio.start() ) {
-					System.out.println( "Asio start error ");
-					return;
-				}
-			}
-			
-		};
-		asioThread.start();
+		startSound();
 		System.out.println( "Press enter to stop recording");
 		try {
 			System.in.read();
@@ -73,7 +62,44 @@ public class YadawCmd {
 	}
 	
 	public void play( String fileName, int channel ) {
+		AudioTrack track = new AudioTrack( sampleRate );
+		AudioStream pStream = new AudioStream();
+		asio.connectInput(channel, pStream);
+		track.setOutput( pStream );
 		
+		try {
+			track.playbackStart(fileName);
+		} catch (IOException e) {
+			System.out.println( "Could not open trackfile: " + fileName );
+		}
+		
+		startSound();
+		try {
+			synchronized( track ) {
+				System.out.println( "Wait play finished");
+				track.wait();
+				System.out.println( "  got it" );
+			}
+		} catch( InterruptedException e ) {
+			System.out.println( "Playback stopped");
+		}
+		
+		asio.stop();		
+	}
+	
+	public void startSound() {
+		asioThread = new Thread() {
+
+			@Override
+			public void run() {
+				if( !asio.start() ) {
+					System.out.println( "Asio start error ");
+					return;
+				}
+			}
+			
+		};
+		asioThread.start();		
 	}
 	
 	public static void main(String[] args) {

@@ -11,6 +11,7 @@ public class AudioStream {
 	private AudioStreamBuffer[] streamBuffers;
 	int wb;
 	int rb;
+	int nextWb; 
 	private Set<SyncListener> syncListeners;
 	
 	public AudioStream( ) {
@@ -43,25 +44,29 @@ public class AudioStream {
 	}
 	
 	public boolean write( int[] samples, long spos ) {
-		if( !isFull() ) {
-			wb = nwb;
+		if( !isFull() ) {			
 			streamBuffers[wb].setSamplePos(spos);
 			streamBuffers[wb].setBuffer(samples);
+			wb = nextWb;
 			return true;
 		}
 		return false;
 	}
 	
 	public boolean isFull() {
-		int nwb = wb + 1;
-		if( nwb == nofBuffers ) {
-			nwb = 0;
+		nextWb = wb + 1;
+		if( nextWb == nofBuffers ) {
+			nextWb = 0;
 		}
 		
-		if( nwb == rb ) {
+		if( nextWb == rb ) {
 			return true;
 		}
 		return false;
+	}
+	
+	public boolean isEmpty() {
+		return rb == wb;
 	}
 	
 	public void addSyncListener( SyncListener sl ) {

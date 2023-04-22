@@ -136,16 +136,17 @@ public class Asio {
 
 		int[][] outputBuffer = new int[nofActivatedOutputs][];
 		int[][] inputBuffer = new int[nofActivatedInputs][4096];
-
 		synchronized (this) {
 			do {
 				int bufNum = 0;
 				for (int n = 0; n < nofOutputs; n++) {
-					if (outputStreams[n] != null) {
+					AudioStream stream = outputStreams[n];
+					if (stream != null) {
 						// There must be enough room in output buffer to take the entire array
-						int available = outputStreams[n].availableNextRead();
+						int available = stream.availableNextRead();
 						if ( available > 0 && available < asioFreeOutputSamples(n)) {
-							outputBuffer[bufNum] = outputStreams[n].read().getBuffer();
+							outputBuffer[bufNum] = stream.read().getBuffer();
+							xService.submit( () -> stream.sync());
 						}
 						else {
 							outputBuffer[bufNum] = null;

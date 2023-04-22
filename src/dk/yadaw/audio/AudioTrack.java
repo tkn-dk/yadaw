@@ -9,7 +9,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.text.DecimalFormat;
-import java.util.Scanner;
 
 /**
  * Represents and audio track having both producer and consumer capabilities.
@@ -27,6 +26,8 @@ public class AudioTrack implements SyncListener {
 	private DecimalFormat df;
 	private int posd;
 	private int[] tempOutSamples;
+	private boolean fileReadCompleted;
+	private int playSamplePos;
 
 	/**
 	 * Constructor
@@ -73,26 +74,8 @@ public class AudioTrack implements SyncListener {
 			}
 		}
 		
-		if( s == out && fileInStream != null ) {
-			while( !out.isFull() ) {
-				int n = 0;
-				synchronized( fileInStream ) {
-					try {
-						while( n < tempOutSamples.length ) {
-							int rdlen = fileInStream.read(fileBytes);
-							if( rdlen == fileBytes.length ) {
-								tempOutSamples[n++] = ( fileBytes[0] << 24 ) | ( fileBytes[1] << 16 ) | ( fileBytes[2] << 8 );
-							}
-							else {
-								
-							}
-						}
-					}
-					catch ( IOException e ) {
-						
-					}
-				}	
-			}
+		if( out != null ) {
+			handleOutputBufferTransfer( s );
 		}
 	}
 
@@ -123,11 +106,14 @@ public class AudioTrack implements SyncListener {
 	}
 	
 	public void playbackStart( String trackFile ) throws IOException {
+		playSamplePos = 0;
 		if( out != null ) {
 			try {
 				System.out.println("Opening playback file: " + trackFile);
 				InputStream file = new FileInputStream(trackFile);
 				fileInStream = new BufferedInputStream(file);
+				fileReadCompleted = false;
+				handleOutputBufferTransfer( out );
 			} catch (FileNotFoundException e) {
 				System.out.println("Not found: " + trackFile);
 				return;
@@ -153,8 +139,53 @@ public class AudioTrack implements SyncListener {
 
 	public void setOutput(AudioStream out) {
 		this.out = out;
+		out.addSyncListener(this);
 	}
 
+	private void handleOutputBufferTransfer( AudioStream s ) {
+		if( fileInStream != null ) {
+			if( fileReadCompleted ) {
+				if( out.isEmpty() ) {
+					System.out.println( "Playback done");
+					synchronized( this ) {
+						notify();
+					}
+				}
+			}
+			else {
+				while (!out.isFull() && !fileReadCompleted ) {
+					int n = 0;
+					synchronized (fileInStream) {
+						try {
+							while (n < tempOutSamples.length) {
+								int rdlen = fileInStream.read(fileBytes);
+								if (rdlen == fileBytes.length) {
+									tempOutSamples[n++] = 
+											(fileBytes[0] << 24) + 
+											(fileBytes[1] << 16) +
+											(fileBytes[2] << 8);
+								} else {
+									System.out.println("Track file reading done" );
+									fileInStream.close();
+									fileReadCompleted = true;
+									break;
+								}
+							}
+							int [] playBuffer = new int[n];
+							System.arraycopy( tempOutSamples, 0, playBuffer, 0, n);
+							out.write( playBuffer,  playSamplePos );
+							playSamplePos += n;
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+					}
+				}
+				float playTime = ( float )playSamplePos / ( float )sampleRate;
+				System.out.print( "\r" + df.format(playTime) );
+			}
+		}
+	}
+	
 	public static void main(String args[]) {
 	}
 }
