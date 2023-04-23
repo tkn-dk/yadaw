@@ -42,43 +42,6 @@ public class AudioTrack implements SyncListener {
 		df = new DecimalFormat("#.###");
 	}
 
-	@Override
-	public void audioSync(AudioStream s) {
-		if (s == in && fileOutStream != null) {
-			AudioStreamBuffer abuf = s.read();
-			if (abuf != null) {
-				long spos = abuf.getSamplePos();
-				int[] inputSamples = abuf.getBuffer();
-
-				if (inputSamples != null) {
-					if (++posd >= 10) {
-						float timecode = (float) spos / (float) sampleRate;
-						System.out.print("\r" + df.format(timecode));
-						posd = 0;
-					}
-
-					synchronized (fileOutStream) {
-						for (int n = 0; n < inputSamples.length; n++) {
-							fileBytes[0] = (byte) (inputSamples[n] >> 24);
-							fileBytes[1] = (byte) (inputSamples[n] >> 16);
-							fileBytes[2] = (byte) (inputSamples[n] >> 8);
-							try {
-								fileOutStream.write(fileBytes);
-							} catch (IOException e) {
-								System.out.println("Error writing track");
-							}
-						}
-
-					}
-				}
-			}
-		}
-		
-		if( out != null ) {
-			handleOutputBufferTransfer( s );
-		}
-	}
-
 	public void recordStart(String trackFile) throws IOException {
 		if (in != null) {
 			try {
@@ -142,11 +105,22 @@ public class AudioTrack implements SyncListener {
 		out.addSyncListener(this);
 	}
 
+	@Override
+	public void audioSync(AudioStream s) {		
+		if( in != null ) {
+			handleInputBufferTransfer( s );
+		}
+		
+		if( out != null ) {
+			handleOutputBufferTransfer( s );
+		}
+	}
+	
 	private void handleOutputBufferTransfer( AudioStream s ) {
 		if( fileInStream != null ) {
 			if( fileReadCompleted ) {
 				if( out.isEmpty() ) {
-					System.out.println( "Playback done");
+					System.out.println( "\nPlayback done");
 					synchronized( this ) {
 						notify();
 					}
@@ -161,27 +135,66 @@ public class AudioTrack implements SyncListener {
 								int rdlen = fileInStream.read(fileBytes);
 								if (rdlen == fileBytes.length) {
 									tempOutSamples[n++] = 
-											(fileBytes[0] << 24) + 
-											(fileBytes[1] << 16) +
-											(fileBytes[2] << 8);
-								} else {
-									System.out.println("Track file reading done" );
+											( (fileBytes[0] & 0xff ) << 24 ) |
+											( (fileBytes[1] & 0xff ) << 16 ) |
+											( (fileBytes[0] & 0xff ) << 8 );										
+							} 
+								else {
 									fileInStream.close();
 									fileReadCompleted = true;
 									break;
 								}
 							}
-							int [] playBuffer = new int[n];
-							System.arraycopy( tempOutSamples, 0, playBuffer, 0, n);
-							out.write( playBuffer,  playSamplePos );
-							playSamplePos += n;
+							
+							if( n > 0 ) {
+								int [] playBuffer = new int[n];
+								System.arraycopy( tempOutSamples, 0, playBuffer, 0, n);
+								out.write( playBuffer,  playSamplePos );
+								playSamplePos += n;							
+							}
+							
 						} catch (IOException e) {
 							e.printStackTrace();
 						}
 					}
 				}
-				float playTime = ( float )playSamplePos / ( float )sampleRate;
-				System.out.print( "\r" + df.format(playTime) );
+				
+				if( in == null && ++posd >= 10 ) {
+					float playTime = ( float )playSamplePos / ( float )sampleRate;
+					System.out.print( "\r" + df.format(playTime) );
+					posd = 0;
+				}
+			}
+		}
+	}
+	
+	private void handleInputBufferTransfer( AudioStream s ) {
+		if ( fileOutStream != null) {
+			AudioStreamBuffer abuf = s.read();
+			if (abuf != null) {
+				long spos = abuf.getSamplePos();
+				int[] inputSamples = abuf.getBuffer();
+
+				if (inputSamples != null) {
+					if (++posd >= 10) {
+						float timecode = (float) spos / (float) sampleRate;
+						System.out.print("\r" + df.format(timecode));
+						posd = 0;
+					}
+
+					synchronized (fileOutStream) {
+						for (int n = 0; n < inputSamples.length; n++) {
+							fileBytes[0] = (byte) (inputSamples[n] >> 24);
+							fileBytes[1] = (byte) (inputSamples[n] >> 16);
+							fileBytes[2] = (byte) (inputSamples[n] >> 8);
+							try {
+								fileOutStream.write(fileBytes);
+							} catch (IOException e) {
+								System.out.println("Error writing track");
+							}
+						}
+					}
+				}
 			}
 		}
 	}

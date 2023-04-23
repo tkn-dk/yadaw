@@ -76,9 +76,7 @@ public class YadawCmd {
 		startSound();
 		try {
 			synchronized( track ) {
-				System.out.println( "Wait play finished");
 				track.wait();
-				System.out.println( "  got it" );
 			}
 		} catch( InterruptedException e ) {
 			System.out.println( "Playback stopped");

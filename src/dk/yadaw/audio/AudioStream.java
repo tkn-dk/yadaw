@@ -7,7 +7,7 @@ import java.util.Set;
  * Represents an audio stream.
  */
 public class AudioStream {
-	private final int nofBuffers = 4;
+	private final int nofBuffers = 8;
 	private AudioStreamBuffer[] streamBuffers;
 	int wb;
 	int rb;

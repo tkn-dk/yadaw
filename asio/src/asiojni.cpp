@@ -354,7 +354,6 @@ JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioPrepBuffers(JNIEnv *env, job
 	}
 
 	int numChannels = nofArmedInputs + nofArmedOutputs;
-	printf( "jni: prepBuffer. %u input. %u output\n", nofArmedInputs, nofArmedOutputs );
 
 	int bufIndex = 0;
 	asioCtx.buffers = new ASIOBufferInfo[numChannels];
@@ -364,7 +363,6 @@ JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioPrepBuffers(JNIEnv *env, job
 	{
 		if( asioCtx.armedInputsMask & mask )
 		{
-			printf( "prep: Input %u\n", n );
 			asioCtx.buffers[bufIndex] = {0};
 			asioCtx.buffers[bufIndex].channelNum = n;
 			asioCtx.buffers[bufIndex].isInput = ASIOTrue;
@@ -373,7 +371,6 @@ JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioPrepBuffers(JNIEnv *env, job
 
 		if( asioCtx.armedOutputsMask & mask )
 		{
-			printf( "prep: Output %u", n );
 			asioCtx.buffers[bufIndex] = {0};
 			asioCtx.buffers[bufIndex].channelNum = n;
 			asioCtx.buffers[bufIndex].isInput = ASIOFalse;
@@ -389,7 +386,6 @@ JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioPrepBuffers(JNIEnv *env, job
 	asioCtx.isFirstInputSampleBuf = true;
 
 	prepCallbacks();
-	printf( "ASIOCreateBuffers: %x, %d, %d, %x\n", asioCtx.buffers, numChannels, asioCtx.sampleBufferSize, &asioCtx.callBacks );
 	ASIOError err = ASIOCreateBuffers( asioCtx.buffers, numChannels, asioCtx.sampleBufferSize, &asioCtx.callBacks );
 	if( err != ASE_OK && err != ASE_SUCCESS )
 	{
@@ -597,7 +593,6 @@ bool getChannelInfo( AsioContext *ctx )
 
 void prepCallbacks()
 {
-	printf( "jni prepCallbacks\n" );
 	asioCtx.callBacks.asioMessage = asioMessage;
 	asioCtx.callBacks.bufferSwitch = bufferSwitch;
 	asioCtx.callBacks.bufferSwitchTimeInfo = bufferSwitchTimeInfo;
