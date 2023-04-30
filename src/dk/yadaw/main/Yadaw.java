@@ -2,6 +2,7 @@ package dk.yadaw.main;
 
 
 
+import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
@@ -17,11 +18,13 @@ import dk.yadaw.datamodel.DataModelInstance;
 import dk.yadaw.datamodel.DataModelUpdateListenerIf;
 import dk.yadaw.datamodel.YadawDataModel;
 import dk.yadaw.datamodel.YadawDataModel.DataID;
+import dk.yadaw.widgets.Potentiometer;
 import dk.yadaw.widgets.SelectAsioDlg;
 import dk.yadaw.widgets.VUMeter;
 import dk.yadaw.widgets.ViewAudioParmsDlg;
 
 public class Yadaw extends Thread implements DataModelUpdateListenerIf {
+	Potentiometer s1pot, s2pot, vpot, pan;
 	VUMeter vu;
 	JFrame mainFrame;
 	YadawDataModel model;
@@ -38,9 +41,28 @@ public class Yadaw extends Thread implements DataModelUpdateListenerIf {
 		mainFrame = new JFrame( "Yadaw" );
 		mainFrame.setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE );
 		mainFrame.setExtendedState( JFrame.MAXIMIZED_BOTH );
+		mainFrame.setLayout( new FlowLayout() );
 		
 		vu = new VUMeter( false );
 		mainFrame.add( vu );
+		
+		
+		s1pot = new Potentiometer( 50, "Send 1" );
+		mainFrame.add( s1pot );
+		s2pot = new Potentiometer( 50, "Send 2" );
+		mainFrame.add( s2pot );
+		
+		pan = new Potentiometer( 50, "Pan" );
+		pan.setMin( -20 );
+		pan.setMax( 20 );
+		mainFrame.add( pan );
+
+		vpot = new Potentiometer( 50, "Volume" );
+		mainFrame.add( vpot );
+		
+		
+		
+		mainFrame.pack();
 		mainFrame.setVisible(true);
 		
 		JMenuBar menuBar = new JMenuBar();

@@ -11,7 +11,8 @@ import java.io.OutputStream;
 import java.text.DecimalFormat;
 
 /**
- * Represents and audio track having both producer and consumer capabilities.
+ * Represents and audio track having both an input stream for recording and
+ * an output stream for playback.
  * 
  * @author tkn
  *
@@ -127,38 +128,35 @@ public class AudioTrack implements SyncListener {
 				}
 			}
 			else {
-				while (!out.isFull() && !fileReadCompleted ) {
+				while (!out.isFull() && !fileReadCompleted) {
 					int n = 0;
 					synchronized (fileInStream) {
 						try {
 							while (n < tempOutSamples.length) {
 								int rdlen = fileInStream.read(fileBytes);
 								if (rdlen == fileBytes.length) {
-									tempOutSamples[n++] = 
-											( (fileBytes[0] & 0xff ) << 24 ) |
-											( (fileBytes[1] & 0xff ) << 16 ) |
-											( (fileBytes[0] & 0xff ) << 8 );										
-							} 
-								else {
+									tempOutSamples[n++] = ((fileBytes[0] & 0xff) << 24) | ((fileBytes[1] & 0xff) << 16)
+											| ((fileBytes[0] & 0xff) << 8);
+								} else {
 									fileInStream.close();
 									fileReadCompleted = true;
 									break;
 								}
 							}
-							
-							if( n > 0 ) {
-								int [] playBuffer = new int[n];
-								System.arraycopy( tempOutSamples, 0, playBuffer, 0, n);
-								out.write( playBuffer,  playSamplePos );
-								playSamplePos += n;							
+
+							if (n > 0) {
+								int[] playBuffer = new int[n];
+								System.arraycopy(tempOutSamples, 0, playBuffer, 0, n);
+								out.write(playBuffer, playSamplePos);
+								playSamplePos += n;
 							}
-							
+
 						} catch (IOException e) {
 							e.printStackTrace();
 						}
 					}
 				}
-				
+
 				if( in == null && ++posd >= 10 ) {
 					float playTime = ( float )playSamplePos / ( float )sampleRate;
 					System.out.print( "\r" + df.format(playTime) );
