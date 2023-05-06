@@ -1,6 +1,10 @@
 package dk.yadaw.widgets;
 
 import java.awt.FlowLayout;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.awt.Component;
+import java.awt.Dimension;
 
 import javax.swing.JPanel;
 
@@ -14,9 +18,10 @@ public class TrackPanel extends JPanel {
 	private VUMeter vuOutRight;
 	private InputControls inCtrl;
 	private TrackView trackView;
-	private int height;
+	private Collection<Component> panelComponents;
 	
 	public TrackPanel( int channel ) {
+		panelComponents = new ArrayList<Component>();
 		volume = new Potentiometer( 50, "Vol" );
 		volume.setMin( 0 );
 		volume.setMax( 40 );
@@ -42,15 +47,36 @@ public class TrackPanel extends JPanel {
 		trackView = new TrackView( 60 );
 		
 		setLayout( new FlowLayout() );
-		add( inCtrl );
-		add( vuIn );
-		add( trackView );
-		add( send1 );
-		add( send2 );
-		add( pan );
-		add( volume );
-		add( vuOutLeft );
-		add( vuOutRight );
+				
+		panelComponents.add( inCtrl );
+		panelComponents.add( vuIn );
+		panelComponents.add( trackView );
+		panelComponents.add( send1 );
+		panelComponents.add( send2 );
+		panelComponents.add( pan );
+		panelComponents.add( volume );
+		panelComponents.add( vuOutLeft );
+		panelComponents.add( vuOutRight );
+		
+		for( Component c : panelComponents ) {
+			add( c );
+		}
+		
+	}
+	
+	public void resizeTrackView() {
+		int pWidth = getWidth();
+		int tvWidth = pWidth - 70;
+		for( Component c : panelComponents ) {
+			if( c != trackView ) {
+				tvWidth -= c.getWidth();
+			}
+		}
+		int tvHeight = trackView.getHeight();
+		
+		System.out.println( "pWidth: " + pWidth + ", tvHeight: " + tvHeight + ", tvWidth: " + tvWidth );
+		Dimension newDim = new Dimension( tvWidth, tvHeight );
+		trackView.setPreferredSize( newDim );
 	}
 	
 	

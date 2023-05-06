@@ -3,6 +3,8 @@ package dk.yadaw.main;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 
 import javax.swing.JFrame;
 import javax.swing.JMenu;
@@ -76,6 +78,18 @@ public class YadawFrame extends JFrame {
 		menuBar.add( audioMenu );
 		
 		setJMenuBar(menuBar);
+		
+		addComponentListener( new ComponentAdapter() {
+
+			@Override
+			public void componentResized(ComponentEvent e) {
+				for( int n = 0; n < trackPanels.length; n++ ) {
+					trackPanels[n].resizeTrackView();
+				}
+				super.componentResized(e);
+			}
+			
+		});
 	}
 
 }

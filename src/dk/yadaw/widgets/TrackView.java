@@ -6,12 +6,9 @@ import java.awt.Dimension;
 import java.awt.Graphics;
 
 public class TrackView extends Component {
-	private int height;
-	private int width;
 	
 	public TrackView( int height ) {
-		this.height = height;
-		width = 800;
+		int width = 800;
 		Dimension dim = new Dimension( width, height );
 		setPreferredSize( dim );
 	}
@@ -22,6 +19,8 @@ public class TrackView extends Component {
 
 	@Override
 	public void paint(Graphics g) {
+		int width = getWidth();
+		int height = getHeight();
 		g.setColor( Color.BLACK );
 		g.drawRect( 0,  0,  width - 1, height - 1 );
 		super.paint(g);

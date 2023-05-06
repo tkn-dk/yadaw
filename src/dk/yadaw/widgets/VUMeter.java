@@ -15,8 +15,6 @@ public class VUMeter extends Component {
 	private int max;
 	private int min;
 	private int zero;
-	private int width;
-	private int height;
 	private int vumHeight;
 	private String label;
 	private final Color normColor = new Color( 0, 200, 0 );
@@ -26,8 +24,6 @@ public class VUMeter extends Component {
 	private PeakTimer peakTimer;
 	
 	public VUMeter( int width, int height, String label ) {
-		this.width = width;
-		this.height = height;
 		this.label = label;
 		vumHeight = height - 2;
 		max = 12;
@@ -35,6 +31,9 @@ public class VUMeter extends Component {
 		zero = 0;
 		newVal = min;
 		peakVal = min;
+		
+		Dimension dim = new Dimension( width, height );
+		setPreferredSize( dim );
 		
 		peakTimer = new PeakTimer() {
 			public void timerEvent() {
@@ -47,15 +46,10 @@ public class VUMeter extends Component {
 	}
 	
 	@Override
-	public Dimension getPreferredSize() {
-		Dimension dim;
-		dim =  new Dimension( width, height );			
-		return dim;
-	}
-	
-	@Override
 	public void paint( Graphics g ) {
 		Graphics2D g2d = ( Graphics2D ) g;
+		int width = getWidth();
+		int height = getHeight();
 		Color lowPart = normColor;
 		Color highPart = warnColor;
 		
@@ -66,9 +60,9 @@ public class VUMeter extends Component {
 		
 		vumRect( g2d, Color.BLACK, 0, 0,  width, height);
 		
-		int nlvl = valToPixel( newVal );
-		int plvl = valToPixel( peakVal );
-		int zlvl = valToPixel( zero );
+		int nlvl = valToPixel( height, newVal );
+		int plvl = valToPixel( height, peakVal );
+		int zlvl = valToPixel( height, zero );
 		
 		if( newVal > zero ) {
 			vumRect( g2d, lowPart, 2, zlvl, width - 4, vumHeight - zlvl);
@@ -87,11 +81,13 @@ public class VUMeter extends Component {
 			g2d.setBackground( lowPart );
 			g2d.drawLine( 2, plvl, width - 4, plvl );			
 		}
+		super.paint(g);
 	}
 		
 	public void setVal( int val ) {
 		newVal = val;
-		System.out.println( "val: " + val + "  pxlVal: " + valToPixel( val ));
+		int height = getHeight();
+		System.out.println( "val: " + val + "  pxlVal: " + valToPixel( height, val ));
 		if( val >= peakVal ) {
 			peakVal = val;
 			peakTimer.setTimer( 1000 );
@@ -131,7 +127,7 @@ public class VUMeter extends Component {
 		return zero;
 	}
 	
-	private int valToPixel( int val ) {
+	private int valToPixel( int height, int val ) {
 		return vumHeight - ( (val - min) * height )/( max - min ) + 2;
 	}
 	

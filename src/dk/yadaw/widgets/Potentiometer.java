@@ -102,6 +102,7 @@ public class Potentiometer extends java.awt.Component implements MouseWheelListe
         g2d.drawString( label, 2, 10 );
         drawArc( g2d );
         drawArrow( g2d );
+		super.paint(g);
     }
 
     @Override
