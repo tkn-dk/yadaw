@@ -27,7 +27,7 @@ public class Potentiometer extends java.awt.Component implements MouseWheelListe
     public Potentiometer( int width, String label ) {
         this.sizeX = width;
         this.sizeY = width + 10;
-        setPreferredSize(new Dimension(sizeX, sizeY));
+        setPreferredSize(new Dimension(sizeX, sizeY + 1));
         addMouseWheelListener(this);
         this.label = label;
     }

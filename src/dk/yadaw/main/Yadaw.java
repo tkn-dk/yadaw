@@ -2,14 +2,6 @@ package dk.yadaw.main;
 
 
 
-import java.awt.FlowLayout;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-
-import javax.swing.JFrame;
-import javax.swing.JMenu;
-import javax.swing.JMenuBar;
-import javax.swing.JMenuItem;
 import javax.swing.SwingUtilities;
 
 import dk.yadaw.audio.Asio;
@@ -18,15 +10,9 @@ import dk.yadaw.datamodel.DataModelInstance;
 import dk.yadaw.datamodel.DataModelUpdateListenerIf;
 import dk.yadaw.datamodel.YadawDataModel;
 import dk.yadaw.datamodel.YadawDataModel.DataID;
-import dk.yadaw.widgets.Potentiometer;
-import dk.yadaw.widgets.SelectAsioDlg;
-import dk.yadaw.widgets.VUMeter;
-import dk.yadaw.widgets.ViewAudioParmsDlg;
 
 public class Yadaw extends Thread implements DataModelUpdateListenerIf {
-	Potentiometer s1pot, s2pot, vpot, pan;
-	VUMeter vu;
-	JFrame mainFrame;
+	YadawFrame mainFrame;
 	YadawDataModel model;
 	Asio asio;
 	
@@ -34,82 +20,7 @@ public class Yadaw extends Thread implements DataModelUpdateListenerIf {
 		model = DataModelInstance.getModelInstance();
 		model.addUpdateListener( DataID.YADAW_ALL, this );
 		asio = model.getAsio();
-		createGui();
-	}
-	
-	private void createGui() {
-		mainFrame = new JFrame( "Yadaw" );
-		mainFrame.setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE );
-		mainFrame.setExtendedState( JFrame.MAXIMIZED_BOTH );
-		mainFrame.setLayout( new FlowLayout() );
-		
-		vu = new VUMeter( false );
-		mainFrame.add( vu );
-		
-		
-		s1pot = new Potentiometer( 50, "Send 1" );
-		mainFrame.add( s1pot );
-		s2pot = new Potentiometer( 50, "Send 2" );
-		mainFrame.add( s2pot );
-		
-		pan = new Potentiometer( 50, "Pan" );
-		pan.setMin( -20 );
-		pan.setMax( 20 );
-		mainFrame.add( pan );
-
-		vpot = new Potentiometer( 50, "Volume" );
-		mainFrame.add( vpot );
-		
-		
-		
-		mainFrame.pack();
-		mainFrame.setVisible(true);
-		
-		JMenuBar menuBar = new JMenuBar();
-		
-		// File menu
-		JMenu fileMenu = new JMenu( "File" );
-		JMenuItem fileSave = new JMenuItem( "Save..." );
-		JMenuItem fileLoad = new JMenuItem( "Load..." );
-		JMenuItem fileExit = new JMenuItem( "Exit" );
-		fileExit.addActionListener( new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				System.exit(NORM_PRIORITY);	
-			}
-		});
-		fileMenu.add( fileSave );
-		fileMenu.add( fileLoad );
-		fileMenu.add( fileExit );
-		menuBar.add( fileMenu );
-		
-		// Audio menu
-		JMenu audioMenu = new JMenu( "Audio" );
-		JMenuItem audioSelectInterface = new JMenuItem( "Open Interface");
-		audioSelectInterface.addActionListener( new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				System.out.println( "Open asio dialog");
-				SelectAsioDlg dlg = new SelectAsioDlg( mainFrame );
-			}
-		});
-		
-		JMenuItem audioSettings = new JMenuItem( "Audio Settings");
-		audioSettings.addActionListener( new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				System.out.println( "Audio settings action " );
-				ViewAudioParmsDlg dlg = new ViewAudioParmsDlg( mainFrame );
-			}
-		});
-		
-		JMenuItem audioAddTrack = new JMenuItem( "Add track" );
-		audioMenu.add( audioSelectInterface );
-		audioMenu.add( audioSettings );
-		audioMenu.add( audioAddTrack );
-		menuBar.add( audioMenu );
-		
-		mainFrame.setJMenuBar(menuBar);
+		mainFrame = new YadawFrame();
 	}
 	
 	@Override
