@@ -2,3 +2,4 @@ bin/
 asio/build
 asio/asiosdk
 doc/
+*.dll
