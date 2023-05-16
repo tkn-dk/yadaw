@@ -7,6 +7,7 @@ public class YadawCmd {
 	private Asio asio; 
 	private Thread asioThread;
 	private int sampleRate;
+	private int bufferSize;
 	
 	public YadawCmd() {
 		asio = new Asio();
@@ -21,6 +22,7 @@ public class YadawCmd {
 		try {
 			asio.openDriver(driverName);
 			sampleRate = ( int )asio.getSamplerate();
+			bufferSize = asio.getBufferSize();
 		} catch (AsioException e) {
 			System.out.println( e );
 			return false;
@@ -30,7 +32,7 @@ public class YadawCmd {
 	}
 	
 	public void record( String fileName, int channel ) {
-		AudioTrack track = new AudioTrack( sampleRate );
+		AudioTrack track = new AudioTrack( sampleRate, bufferSize );
 		AudioStream rstream = new AudioStream();
 		asio.connectOutput( channel, rstream);
 		track.setInput(rstream);

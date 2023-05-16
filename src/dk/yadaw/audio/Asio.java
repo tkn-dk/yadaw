@@ -135,7 +135,7 @@ public class Asio {
 		isStopped = false;
 
 		int[][] outputBuffer = new int[nofActivatedOutputs][];
-		int[][] inputBuffer = new int[nofActivatedInputs][4096];
+		int[][] inputBuffer = new int[nofActivatedInputs][bufferSize];
 		synchronized (this) {
 			do {
 				int bufNum = 0;
@@ -170,7 +170,11 @@ public class Asio {
 					System.out.println("Sample wait interrupted");
 				}
 				int nofSamples = asioGetInputSamples(inputBuffer);
-				updateInputStreams(inputBuffer, nofSamples);
+				while( nofSamples > 0 ) {
+					updateInputStreams(inputBuffer, nofSamples);
+					nofSamples = asioGetInputSamples(inputBuffer);
+				}
+					
 			} while (!isStopped);
 
 			xService.shutdown();

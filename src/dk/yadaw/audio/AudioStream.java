@@ -12,7 +12,9 @@ public class AudioStream {
 	int wb;
 	int rb;
 	int nextWb; 
+	int peak;
 	private Set<SyncListener> syncListeners;
+	private Set<PeakListener> peakListeners;
 	
 	public AudioStream( ) {
 		streamBuffers = new AudioStreamBuffer[nofBuffers];
@@ -27,6 +29,14 @@ public class AudioStream {
 	public AudioStreamBuffer read() {
 		AudioStreamBuffer abuf = null;
 		if( rb != wb ) {
+			if( peakListeners.size() > 0 ) {
+				peak = calculateFrontPeak();
+				for( PeakListener l : peakListeners ) {
+					// TODO: Investigate if this should be handed over to ExecutorService
+					// to not delay return of read().
+					l.peakUpdate(peak);
+				}
+			}
 			abuf = streamBuffers[rb++];
 			if( rb == nofBuffers )
 			{
@@ -67,6 +77,37 @@ public class AudioStream {
 	
 	public boolean isEmpty() {
 		return rb == wb;
+	}
+	
+	public int getLastReadPeak() {
+		return peak;
+	}
+	
+	/**
+	 * Calculate peak value from next buffer leaving
+	 * the audiostream
+	 * @return
+	 */
+	private int calculateFrontPeak() {
+		int peak = 0;
+		int[] frontBuffer = streamBuffers[rb].getBuffer();
+		int max = Integer.MIN_VALUE;
+		int min = Integer.MAX_VALUE;
+		for (int n = 0; n < frontBuffer.length; n++) {
+			if (frontBuffer[n] > max) {
+				max = frontBuffer[n];
+			}
+
+			if (frontBuffer[n] < min) {
+				min = frontBuffer[n];
+			}
+		}
+		peak = Math.max(Math.abs(max), Math.abs(min));
+		return peak;
+	}
+	
+	public void addPeakListener( PeakListener pl ) {
+		peakListeners.add( pl );
 	}
 	
 	public void addSyncListener( SyncListener sl ) {

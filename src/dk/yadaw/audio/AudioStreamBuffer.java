@@ -1,5 +1,10 @@
 package dk.yadaw.audio;
 
+/**
+ * Class for holding a sample buffer and a sample position.
+ * @author tkn
+ *
+ */
 public class AudioStreamBuffer {
 	private long samplePos;
 	private int[] buffer;

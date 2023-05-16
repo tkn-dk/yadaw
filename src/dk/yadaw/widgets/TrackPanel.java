@@ -73,8 +73,6 @@ public class TrackPanel extends JPanel {
 			}
 		}
 		int tvHeight = trackView.getHeight();
-		
-		System.out.println( "pWidth: " + pWidth + ", tvHeight: " + tvHeight + ", tvWidth: " + tvWidth );
 		Dimension newDim = new Dimension( tvWidth, tvHeight );
 		trackView.setPreferredSize( newDim );
 	}
