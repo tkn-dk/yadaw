@@ -19,8 +19,10 @@ public class TrackPanel extends JPanel {
 	private InputControls inCtrl;
 	private TrackView trackView;
 	private Collection<Component> panelComponents;
+	private String label;
 	
-	public TrackPanel( int channel ) {
+	public TrackPanel( String label ) {
+		this.label = label;
 		panelComponents = new ArrayList<Component>();
 		volume = new Potentiometer( 50, "Vol" );
 		volume.setMin( 0 );
@@ -42,7 +44,7 @@ public class TrackPanel extends JPanel {
 		vuOutLeft = new VUMeter( 8, 60, "L" );
 		vuOutRight = new VUMeter( 8, 60, "R" );
 		
-		inCtrl = new InputControls( 40, 60, channel );
+		inCtrl = new InputControls( 40, 60, label );
 		
 		trackView = new TrackView( 60 );
 		
@@ -77,6 +79,24 @@ public class TrackPanel extends JPanel {
 		trackView.setPreferredSize( newDim );
 	}
 	
+	public void setLabel( String label ) {
+		this.label = label;
+	}
 	
+	public String getLabel() {
+		return this.label;
+	}
+	
+	public VUMeter getInVUMeter() {
+		return vuIn;
+	}
+	
+	public VUMeter getOutLeftVUMeter() {
+		return vuOutLeft;
+	}
+	
+	public VUMeter getOutRightVUMeter() {
+		return vuOutRight;
+	}
 
 }

@@ -12,29 +12,28 @@ import java.awt.geom.Rectangle2D;
 
 public class InputControls extends Component implements MouseListener {
 	private boolean record;
-	private int channel;
+	private String label;
     private final Font font = new Font( "arial", Font.PLAIN, 12);
     private int height;
     private int width;
 
-	public InputControls( int width, int height, int channel ) {
+	public InputControls( int width, int height, String label ) {
 		this.height = height;
 		this.width = width;
-		this.channel = channel;
+		this.label = label;
 		Dimension dim = new Dimension( width, height );
 		setPreferredSize( dim );
-		addMouseListener( this);
+		addMouseListener( this );
 	}
 
 	@Override
 	public void paint(Graphics g) {
 		Graphics2D g2d = ( Graphics2D )g;
-		String ch = Integer.toString( channel );
-		Rectangle2D strBounds = g2d.getFontMetrics().getStringBounds( ch, g2d );
+		Rectangle2D strBounds = g2d.getFontMetrics().getStringBounds( label, g2d );
 		g2d.setColor( Color.BLACK );
 		g2d.setFont( font );
 		g2d.drawRect( 0, 0,  width - 1, height / 2 - 2  );
-		g2d.drawString( Integer.toString( channel ), ( float )( width - strBounds.getWidth() )/2, ( float )(( height - strBounds.getHeight())/2) - 5 );
+		g2d.drawString( label, ( float )( width - strBounds.getWidth() )/2, ( float )(( height - strBounds.getHeight())/2) - 5 );
 
 		g2d.drawRect( 0,  height / 2 + 2, width - 1 , height / 2 - 4 );
 		if( record ) {

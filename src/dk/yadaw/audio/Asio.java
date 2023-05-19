@@ -135,7 +135,7 @@ public class Asio {
 		isStopped = false;
 
 		int[][] outputBuffer = new int[nofActivatedOutputs][];
-		int[][] inputBuffer = new int[nofActivatedInputs][bufferSize];
+		int[][] inputBuffer = new int[nofActivatedInputs][4 * bufferSize];
 		synchronized (this) {
 			do {
 				int bufNum = 0;
@@ -144,18 +144,17 @@ public class Asio {
 					if (stream != null) {
 						// There must be enough room in output buffer to take the entire array
 						int available = stream.availableNextRead();
-						if ( available > 0 && available < asioFreeOutputSamples(n)) {
+						if (available > 0 && available < asioFreeOutputSamples(n)) {
 							outputBuffer[bufNum] = stream.read().getBuffer();
-							xService.submit( () -> stream.sync());
-						}
-						else {
+							xService.submit(() -> stream.sync());
+						} else {
 							outputBuffer[bufNum] = null;
 						}
 						bufNum++;
 					}
 				}
 				asioSetOutputSamples(outputBuffer);
-
+				
 				if (!isStarted) {
 					if (asioStart() < 0) {
 						System.out.println("Error starting ASIO");
@@ -169,6 +168,7 @@ public class Asio {
 				} catch (InterruptedException e1) {
 					System.out.println("Sample wait interrupted");
 				}
+				
 				int nofSamples = asioGetInputSamples(inputBuffer);
 				while( nofSamples > 0 ) {
 					updateInputStreams(inputBuffer, nofSamples);

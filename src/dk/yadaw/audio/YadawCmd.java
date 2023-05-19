@@ -64,7 +64,7 @@ public class YadawCmd {
 	}
 	
 	public void play( String fileName, int channel ) {
-		AudioTrack track = new AudioTrack( sampleRate );
+		AudioTrack track = new AudioTrack( sampleRate, bufferSize );
 		AudioStream pStream = new AudioStream();
 		asio.connectInput(channel, pStream);
 		track.setOutput( pStream );

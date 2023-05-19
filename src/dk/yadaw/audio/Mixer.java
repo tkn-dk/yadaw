@@ -1,7 +1,6 @@
 package dk.yadaw.audio;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
 
 /**
  * Representing mixer - the main sound router in the system.
@@ -9,31 +8,40 @@ import java.util.Set;
  *
  */
 public class Mixer implements SyncListener {
-	private MixerChannel[] channels;
+	private ArrayList<MixerChannel> channels;
 	private AudioStream sumLeft;
 	private AudioStream sumRight;
-	private AudioStream[] sumSends;
-	private int sampleBufferLength;
-	private int[][] sumBuffers;
+	private int bufferLength;
+	private int masterGainLeft;
+	private int masterGainRight;
 	
-	public Mixer( int numChannels, int numSends, int sampleBufferLength ) {
-		channels = new MixerChannel[numChannels];
-		sumSends = new AudioStream[numSends];
-		this.sampleBufferLength = sampleBufferLength;
-		sumBuffers = new int[numChannels * numSends][sampleBufferLength];
-		for( int n = 0; n < numChannels; n++ ) {
-			channels[n] = new MixerChannel( numSends );
-			sumSends[n] = new AudioStream();
-		}
+	public Mixer( int bufferLength ) {
+		channels = new ArrayList<MixerChannel>();
+		this.bufferLength = bufferLength;
 	}
 
-	public void setSumLeft( AudioStream left ) {
+	public void setMaster( AudioStream left, AudioStream right ) {
 		sumLeft = left;
+		sumRight = right;
 		sumLeft.addSyncListener(this);
 	}
 	
-	public void setSumRight( AudioStream right ) {
-		sumRight = right;
+	public void setMasterGain( int left, int right ) {
+		masterGainLeft = left;
+		masterGainRight = right;
+	}
+	
+	public void addChannel( String label,  int numSends ) {
+		channels.add( new MixerChannel( label, numSends ));
+	}
+	
+	public MixerChannel getChannel( String label ) {
+		for( MixerChannel mch : channels ) {
+			if( mch.getLabel().equals(label)) {
+				return mch;
+			}
+		}
+		return null;
 	}
 	
 	@Override
@@ -42,11 +50,35 @@ public class Mixer implements SyncListener {
 			mch.audioSync(s);
 		}
 		
-		for (int channel = 0; channel < channels.length; channel++) {
-			for (int snd = 0; snd < sumSends.length; snd++) {
-				sumBuffers[channel*sumSends.length + snd] = channels[channel].getSend(snd).read().getBuffer();
+		sumMasters();	
+	}
+	
+	private void sumMasters() {
+		AudioStreamBuffer lBuf = null;
+		AudioStreamBuffer rBuf = null;
+		int leftInputs[][] = new int[channels.size()][];
+		int rightInputs[][] = new int[channels.size()][];
+		int leftOutput[] = new int[bufferLength];
+		int rightOutput[] = new int[bufferLength];
+		
+		for( int ch = 0; ch < channels.size(); ch++ ) {
+			lBuf = channels.get(ch).getMasterLeft().read();
+			leftInputs[ch] = lBuf.getBuffer();
+			rBuf = channels.get(ch).getMasterRight().read();
+			rightInputs[ch] = rBuf.getBuffer();
+		}
+		
+		for( int sample = 0; sample < bufferLength; sample++ ) {
+			leftOutput[sample] = 0;
+			rightOutput[sample] = 0;
+			for( int ch = 0; ch < channels.size(); ch++ ) {
+				leftOutput[sample] += ( ( long )leftInputs[ch][sample] * masterGainLeft ) >> 32;
+				rightOutput[sample] += ( ( long )rightInputs[ch][sample] * masterGainRight ) >> 32;
 			}
 		}
+		
+		sumLeft.write( leftOutput, lBuf.getSamplePos() );
+		sumRight.write(rightOutput, rBuf.getSamplePos() );
 	}
 	
 }

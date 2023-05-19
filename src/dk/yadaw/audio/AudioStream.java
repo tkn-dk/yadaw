@@ -22,6 +22,7 @@ public class AudioStream {
 			streamBuffers[n] = new AudioStreamBuffer();
 		}
 		syncListeners = new HashSet<SyncListener>();
+		peakListeners = new HashSet<PeakListener>();
 		wb = 0;
 		rb = 0;
 	}

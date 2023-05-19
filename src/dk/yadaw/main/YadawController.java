@@ -4,6 +4,7 @@ import javax.swing.SwingUtilities;
 
 import dk.yadaw.audio.Asio;
 import dk.yadaw.audio.AsioException;
+import dk.yadaw.audio.Mixer;
 import dk.yadaw.datamodel.DataModelInstance;
 import dk.yadaw.datamodel.DataModelUpdateListenerIf;
 import dk.yadaw.datamodel.YadawDataModel;
@@ -33,7 +34,17 @@ public class YadawController implements DataModelUpdateListenerIf {
 			}
 			
 		});
-}
+	}
+	
+	private void setupMixer() {
+		Mixer mixer = new Mixer( asio.getBufferSize() );
+		yaModel.setMixer(mixer);
+		
+		for( int ch = 0; ch < asio.getNofInputs(); ch++ ) {
+			mixer.addChannel( "IN" + ch+1, yaModel.getNumSends() );
+		}
+		
+	}
 
 	@Override
 	public void dataItemUpdated(Object itemID, Object itemData) {
@@ -44,6 +55,7 @@ public class YadawController implements DataModelUpdateListenerIf {
 			System.out.println( "Opening: " + ( String )itemData );
 			try {
 				asio.openDriver( yaModel.getAsioDriverName() );
+				setupMixer();				
 			} catch (AsioException e) {
 				e.printStackTrace();
 			}

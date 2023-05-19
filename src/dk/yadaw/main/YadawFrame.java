@@ -5,6 +5,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
+import java.util.ArrayList;
 
 import javax.swing.JFrame;
 import javax.swing.JMenu;
@@ -16,19 +17,17 @@ import dk.yadaw.widgets.TrackPanel;
 import dk.yadaw.widgets.ViewAudioParmsDlg;
 
 public class YadawFrame extends JFrame {
+	private static final long serialVersionUID = 1L;
+	private ArrayList<TrackPanel> trackPanels;
 	
 	public YadawFrame() {
 		super( "Yadaw" );
 		setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE );
 		setExtendedState( JFrame.MAXIMIZED_BOTH );
 		setLayout( new GridLayout( 0, 1 ) );
-
-		TrackPanel[] trackPanels = new TrackPanel[8];
-		for( int n = 0; n < trackPanels.length; n++ ) {
-			trackPanels[n] = new TrackPanel( n + 1);
-			add(trackPanels[n]);	
-		}
 		
+		trackPanels = new ArrayList<TrackPanel>();
+
 		pack();
 		setVisible(true);
 		
@@ -83,13 +82,29 @@ public class YadawFrame extends JFrame {
 
 			@Override
 			public void componentResized(ComponentEvent e) {
-				for( int n = 0; n < trackPanels.length; n++ ) {
-					trackPanels[n].resizeTrackView();
+				for( TrackPanel tp : trackPanels ) {
+					tp.resizeTrackView();
 				}
 				super.componentResized(e);
 			}
 			
 		});
+	}
+	
+	public void addPanel( String label ) {
+		TrackPanel tp = new TrackPanel( label );
+		trackPanels.add( tp );
+		repaint();
+	}
+	
+	public void deletePanel( String label ) {
+		for( TrackPanel tp : trackPanels ) {
+			if( tp.getLabel().equals(label)) {
+				trackPanels.remove(tp);
+				repaint();
+				break;
+			}
+		}
 	}
 
 }

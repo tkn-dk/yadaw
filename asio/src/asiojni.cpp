@@ -283,7 +283,7 @@ JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioSetOutputSamples(JNIEnv *env
 JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioGetInputSamples(JNIEnv *env, jobject thisobj, jobjectArray inputSamples )
 {
 	jsize nofIntBuffers =  env->GetArrayLength( inputSamples );
-	int nofSamples = 0;
+    int sampleCount = 0;
 
 	if( nofIntBuffers == asioCtx.nofArmedInputs )
 	{
@@ -293,18 +293,19 @@ JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioGetInputSamples(JNIEnv *env,
 	    for (int ch = 0; ch < nofIntBuffers; ch++) {
 	        chs[ch] = (jintArray) env->GetObjectArrayElement(inputSamples, ch);
 	        jint *samples = env->GetIntArrayElements(chs[ch], NULL);
-	        for (int sample = 0; sample < env->GetArrayLength(chs[ch]); sample++)
+	        int inputArrayLength =  env->GetArrayLength(chs[ch]);
+	        while( sampleCount < inputArrayLength )
 	        {
 	        	long s;
 	        	if( inputBuffers[ch]->read( s ) )
 	        	{
-	        		samples[sample] = s;
+	        		samples[sampleCount] = s;
 	        	}
 	        	else
 	        	{
-	        		nofSamples = sample;
 	        		break;
 	        	}
+	        	sampleCount++;
 	        }
 	        env->ReleaseIntArrayElements(chs[ch], samples, 0);
 	    }
@@ -314,7 +315,7 @@ JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioGetInputSamples(JNIEnv *env,
 	{
 		printf( "Number of buffers (%u) does not match number of armed inputs (%u)\n", nofIntBuffers, asioCtx.nofArmedInputs );
 	}
-	return nofSamples;
+	return sampleCount;
 }
 
 JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioFreeOutputSamples(JNIEnv *env, jobject, jint channel )

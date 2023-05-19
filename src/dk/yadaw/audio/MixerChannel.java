@@ -22,7 +22,7 @@ public class MixerChannel implements SyncListener {
 	 * @param label Label for mixertrack - used to construct track file name
 	 * when recording.
 	 */
-	public MixerChannel( int nofSends ) {
+	public MixerChannel( String label, int nofSends ) {
 		sends = new AudioStream[nofSends];
 		sendGains = new int[nofSends];
 		
@@ -31,6 +31,7 @@ public class MixerChannel implements SyncListener {
 			sendGains[n] = 0;
 		}
 		
+		this.label = label;
 		masterOutLeft = new AudioStream();
 		masterOutRight = new AudioStream();
 		// All synchronization is done on masterOutLeft

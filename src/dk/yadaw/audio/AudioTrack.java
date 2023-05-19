@@ -38,7 +38,7 @@ public class AudioTrack implements SyncListener {
 	 */
 	public AudioTrack(int sampleRate, int sampleBufferSize ) {
 		fileBytes = new byte[3];
-		tempOutSamples = new int[sampleBufferSize];
+		tempOutSamples = new int[8 * sampleBufferSize];
 		this.sampleRate = sampleRate;
 		df = new DecimalFormat("#.###");
 	}

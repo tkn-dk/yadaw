@@ -20,6 +20,15 @@ public:
 		return bufSize - wrp+ rdp - 1;
 	}
 
+	size_t avail()
+	{
+		if( wrp >= rdp )
+		{
+			return wrp - rdp;
+		}
+		return bufSize - rdp + wrp;
+	}
+
 	bool isEmpty()
 	{
 		return ( rdp == wrp );
