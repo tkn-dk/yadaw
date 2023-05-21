@@ -45,17 +45,15 @@ public class Mixer implements SyncListener {
 	}
 	
 	@Override
-	public void audioSync(AudioStream s) {
+	public void audioSync( long samplePos ) {
 		for( MixerChannel mch : channels ) {
-			mch.audioSync(s);
+			mch.audioSync( samplePos );
 		}
 		
 		sumMasters();	
 	}
 	
 	private void sumMasters() {
-		AudioStreamBuffer lBuf = null;
-		AudioStreamBuffer rBuf = null;
 		int leftInputs[][] = new int[channels.size()][];
 		int rightInputs[][] = new int[channels.size()][];
 		int leftOutput[] = new int[bufferLength];

@@ -7,117 +7,116 @@ import java.util.Set;
  * Represents an audio stream.
  */
 public class AudioStream {
-	private final int nofBuffers = 8;
-	private AudioStreamBuffer[] streamBuffers;
-	int wb;
-	int rb;
-	int nextWb; 
-	int peak;
+	int[] buffer;
+	long samplePos;
+	int wptr;
+	int rptr;
+	int cptr;
 	private Set<SyncListener> syncListeners;
-	private Set<PeakListener> peakListeners;
 	
 	public AudioStream( ) {
-		streamBuffers = new AudioStreamBuffer[nofBuffers];
-		for( int n = 0; n < streamBuffers.length; n++ ) {
-			streamBuffers[n] = new AudioStreamBuffer();
-		}
+		this( 16384 );
 		syncListeners = new HashSet<SyncListener>();
-		peakListeners = new HashSet<PeakListener>();
-		wb = 0;
-		rb = 0;
+	}
+
+	public AudioStream( int bufferSize ) {
+		buffer = new int[bufferSize];
 	}
 	
-	public AudioStreamBuffer read() {
-		AudioStreamBuffer abuf = null;
-		if( rb != wb ) {
-			if( peakListeners.size() > 0 ) {
-				peak = calculateFrontPeak();
-				for( PeakListener l : peakListeners ) {
-					// TODO: Investigate if this should be handed over to ExecutorService
-					// to not delay return of read().
-					l.peakUpdate(peak);
-				}
-			}
-			abuf = streamBuffers[rb++];
-			if( rb == nofBuffers )
+	public int read() {
+		int rval = 0 ;
+		if( rptr != wptr ) {
+			rval = buffer[rptr++];
+			if( rptr == buffer.length )
 			{
-				rb = 0;
+				rptr = 0;
 			}
 		}
-		return abuf;
+		return rval;
 	}
 	
-	public int availableNextRead() {
-		if( rb != wb ) {
-			return streamBuffers[rb].getBuffer().length;
+	public boolean write( int sample ) {
+		int nextWb = wptr + 1;
+		if( nextWb == buffer.length ) {
+			nextWb = 0;
 		}
-		return 0;
-	}
-	
-	public boolean write( int[] samples, long spos ) {
-		if( !isFull() ) {			
-			streamBuffers[wb].setSamplePos(spos);
-			streamBuffers[wb].setBuffer(samples);
-			wb = nextWb;
+		
+		if( nextWb != cptr ) {
+			buffer[wptr] = sample;
+			wptr = nextWb;
 			return true;
 		}
 		return false;
 	}
 	
+	public int available() {
+		return ( wptr >= rptr ) ? ( wptr - rptr ) : ( buffer.length - rptr + wptr ); 
+	}
+	
+	public int free() {
+		return ( cptr >= wptr ) ? ( cptr - wptr ) : ( buffer.length - wptr + cptr );
+	}
+	
 	public boolean isFull() {
-		nextWb = wb + 1;
-		if( nextWb == nofBuffers ) {
+		int nextWb = wptr + 1;
+		if( nextWb == buffer.length ) {
 			nextWb = 0;
 		}
 		
-		if( nextWb == rb ) {
+		if( nextWb == cptr ) {
 			return true;
 		}
 		return false;
 	}
 	
 	public boolean isEmpty() {
-		return rb == wb;
+		return rptr == wptr;
 	}
 	
-	public int getLastReadPeak() {
-		return peak;
-	}
-	
-	/**
-	 * Calculate peak value from next buffer leaving
-	 * the audiostream
-	 * @return
-	 */
-	private int calculateFrontPeak() {
+	public int peak( int nofSamples ) {
 		int peak = 0;
-		int[] frontBuffer = streamBuffers[rb].getBuffer();
 		int max = Integer.MIN_VALUE;
 		int min = Integer.MAX_VALUE;
-		for (int n = 0; n < frontBuffer.length; n++) {
-			if (frontBuffer[n] > max) {
-				max = frontBuffer[n];
+		int prd = cptr;
+		int n = 0;
+		
+		while( n < nofSamples && prd != wptr ) {
+			if (buffer[prd] > max) {
+				max = buffer[prd];
 			}
 
-			if (frontBuffer[n] < min) {
-				min = frontBuffer[n];
+			if (buffer[prd] < min) {
+				min = buffer[prd];
 			}
+			
+			if( ++prd == buffer.length ) {
+				prd = 0;
+			}
+			
+			n++;
 		}
 		peak = Math.max(Math.abs(max), Math.abs(min));
 		return peak;
-	}
-	
-	public void addPeakListener( PeakListener pl ) {
-		peakListeners.add( pl );
 	}
 	
 	public void addSyncListener( SyncListener sl ) {
 		syncListeners.add(sl);
 	}
 	
-	public void sync( ) {
+	public void sync( long newSamplePos ) {
+		long releasedSamples = newSamplePos - samplePos;
+		int committedSamples = ( wptr >= cptr ) ? wptr - cptr : buffer.length - cptr + wptr;
+		samplePos = newSamplePos;
+		
+		if( committedSamples > releasedSamples ) {
+			cptr = ( int )(( cptr + releasedSamples ) % buffer.length );
+		}
+		else {
+			cptr = wptr;
+		}
+		
 		for( SyncListener s : syncListeners ) {
-			s.audioSync( this );
+			s.audioSync( newSamplePos );
 		}
 	}
 	

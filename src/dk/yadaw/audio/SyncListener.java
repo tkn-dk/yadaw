@@ -9,5 +9,5 @@ package dk.yadaw.audio;
  *
  */
 public interface SyncListener {
-	public void audioSync( AudioStream s );
+	public void audioSync( long samplePos );
 }

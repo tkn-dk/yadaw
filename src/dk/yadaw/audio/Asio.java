@@ -135,19 +135,21 @@ public class Asio {
 		isStopped = false;
 
 		int[][] outputBuffer = new int[nofActivatedOutputs][];
-		int[][] inputBuffer = new int[nofActivatedInputs][4 * bufferSize];
+		int[][] inputBuffer = new int[nofActivatedInputs][8 * bufferSize];
 		synchronized (this) {
 			do {
 				int bufNum = 0;
 				for (int n = 0; n < nofOutputs; n++) {
 					AudioStream stream = outputStreams[n];
 					if (stream != null) {
-						// There must be enough room in output buffer to take the entire array
-						int available = stream.availableNextRead();
-						if (available > 0 && available < asioFreeOutputSamples(n)) {
-							outputBuffer[bufNum] = stream.read().getBuffer();
-							xService.submit(() -> stream.sync());
-						} else {
+						int toTransfer = Math.min( stream.available(), asioFreeOutputSamples( n ));
+						if( toTransfer > 0 ) {
+							outputBuffer[bufNum] = new int[toTransfer];
+							for( int transferred = 0; transferred > toTransfer; transferred++ ) {
+								outputBuffer[bufNum][transferred] = stream.read();
+							}				
+						}
+						else {
 							outputBuffer[bufNum] = null;
 						}
 						bufNum++;
@@ -169,12 +171,21 @@ public class Asio {
 					System.out.println("Sample wait interrupted");
 				}
 				
-				int nofSamples = asioGetInputSamples(inputBuffer);
-				while( nofSamples > 0 ) {
-					updateInputStreams(inputBuffer, nofSamples);
-					nofSamples = asioGetInputSamples(inputBuffer);
+				int nofInputSamples = asioGetInputSamples(inputBuffer);
+				for( int n = 0; n < nofInputs; n++ ) {
+					AudioStream stream = inputStreams[n];
+					if( stream != null ) {
+						for( int sample = 0; sample < nofInputSamples; sample++ ) {
+							if( !stream.write( inputBuffer[n][sample])) {
+								System.out.println( "ASIO output stream overflow");
+								break;
+							}
+						}
+					}
 				}
-					
+				
+				long samplePos = asioGetSamplePos();
+				xService.submit( () -> syncAllStreams( samplePos ) );	
 			} while (!isStopped);
 
 			xService.shutdown();
@@ -228,26 +239,22 @@ public class Asio {
 		return nofActivatedOutputs;
 	}
 	
-	private void notifySample() {
-		notify();
-	}
-	
-	private void updateInputStreams( int[][] samples, int nofSamples ) {
-		long pos = asioGetSamplePos();
-		int bufNum = 0;
-		for( AudioStream stream : inputStreams ) {
-			if( stream != null ) {
-				int[] inBufCopy = new int[nofSamples];
-				System.arraycopy( samples[bufNum], 0, inBufCopy, 0, nofSamples );
-				if( stream.write( inBufCopy, pos )) {
-					xService.submit( () -> stream.sync());
-				}
-				else {
-					System.out.println( "Bufferswitch Input Buffer overrun");
-				}
-				bufNum++;
+	private void syncAllStreams( long samplePos ) {
+		for( AudioStream as : outputStreams ) {
+			if( as != null ) {
+				as.sync(samplePos);
 			}
 		}
+		
+		for( AudioStream as : inputStreams ) {
+			if( as != null ) {
+				as.sync(samplePos);
+			}
+		}
+	}
+	
+	private void notifySample() {
+		notify();
 	}
 	
 	private native void asioLibInit();

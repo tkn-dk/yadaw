@@ -26,9 +26,7 @@ public class AudioTrack implements SyncListener {
 	private int sampleRate;
 	private DecimalFormat df;
 	private int posd;
-	private int[] tempOutSamples;
 	private boolean fileReadCompleted;
-	private int playSamplePos;
 
 	/**
 	 * Constructor
@@ -38,7 +36,6 @@ public class AudioTrack implements SyncListener {
 	 */
 	public AudioTrack(int sampleRate, int sampleBufferSize ) {
 		fileBytes = new byte[3];
-		tempOutSamples = new int[8 * sampleBufferSize];
 		this.sampleRate = sampleRate;
 		df = new DecimalFormat("#.###");
 	}
@@ -70,14 +67,13 @@ public class AudioTrack implements SyncListener {
 	}
 	
 	public void playbackStart( String trackFile ) throws IOException {
-		playSamplePos = 0;
 		if( out != null ) {
 			try {
 				System.out.println("Opening playback file: " + trackFile);
 				InputStream file = new FileInputStream(trackFile);
 				fileInStream = new BufferedInputStream(file);
 				fileReadCompleted = false;
-				handleOutputBufferTransfer( out );
+				handleOutputBufferTransfer();
 			} catch (FileNotFoundException e) {
 				System.out.println("Not found: " + trackFile);
 				return;
@@ -107,17 +103,23 @@ public class AudioTrack implements SyncListener {
 	}
 
 	@Override
-	public void audioSync(AudioStream s) {		
+	public void audioSync( long samplePos ) {		
 		if( in != null ) {
-			handleInputBufferTransfer( s );
+			handleInputBufferTransfer();
 		}
 		
 		if( out != null ) {
-			handleOutputBufferTransfer( s );
+			handleOutputBufferTransfer();
+		}
+		
+		if (++posd >= 10) {
+			float timecode = (float) samplePos / (float) sampleRate;
+			System.out.print("\r" + df.format(timecode));
+			posd = 0;
 		}
 	}
 	
-	private void handleOutputBufferTransfer( AudioStream s ) {
+	private void handleOutputBufferTransfer() {
 		if( fileInStream != null ) {
 			if( fileReadCompleted ) {
 				if( out.isEmpty() ) {
@@ -128,69 +130,41 @@ public class AudioTrack implements SyncListener {
 				}
 			}
 			else {
-				while (!out.isFull() && !fileReadCompleted) {
-					int n = 0;
-					synchronized (fileInStream) {
+				synchronized (fileInStream) {
+					while (!out.isFull() && !fileReadCompleted) {
 						try {
-							while (n < tempOutSamples.length) {
-								int rdlen = fileInStream.read(fileBytes);
-								if (rdlen == fileBytes.length) {
-									tempOutSamples[n++] = ((fileBytes[0] & 0xff) << 24) | ((fileBytes[1] & 0xff) << 16)
-											| ((fileBytes[0] & 0xff) << 8);
-								} else {
-									fileInStream.close();
-									fileReadCompleted = true;
-									break;
-								}
+							int rdlen = fileInStream.read(fileBytes);
+							if (rdlen == fileBytes.length) {
+								int sample = ((fileBytes[0] & 0xff) << 24) | ((fileBytes[1] & 0xff) << 16)
+										| ((fileBytes[0] & 0xff) << 8);
+								out.write( sample );
+							} 
+							else {
+								fileInStream.close();
+								fileReadCompleted = true;
+								break;
 							}
-
-							if (n > 0) {
-								int[] playBuffer = new int[n];
-								System.arraycopy(tempOutSamples, 0, playBuffer, 0, n);
-								out.write(playBuffer, playSamplePos);
-								playSamplePos += n;
-							}
-
 						} catch (IOException e) {
 							e.printStackTrace();
 						}
 					}
 				}
-
-				if( in == null && ++posd >= 10 ) {
-					float playTime = ( float )playSamplePos / ( float )sampleRate;
-					System.out.print( "\r" + df.format(playTime) );
-					posd = 0;
-				}
 			}
 		}
 	}
 	
-	private void handleInputBufferTransfer( AudioStream s ) {
+	private void handleInputBufferTransfer() {
 		if ( fileOutStream != null) {
-			AudioStreamBuffer abuf = s.read();
-			if (abuf != null) {
-				long spos = abuf.getSamplePos();
-				int[] inputSamples = abuf.getBuffer();
-
-				if (inputSamples != null) {
-					if (++posd >= 10) {
-						float timecode = (float) spos / (float) sampleRate;
-						System.out.print("\r" + df.format(timecode));
-						posd = 0;
-					}
-
-					synchronized (fileOutStream) {
-						for (int n = 0; n < inputSamples.length; n++) {
-							fileBytes[0] = (byte) (inputSamples[n] >> 24);
-							fileBytes[1] = (byte) (inputSamples[n] >> 16);
-							fileBytes[2] = (byte) (inputSamples[n] >> 8);
-							try {
-								fileOutStream.write(fileBytes);
-							} catch (IOException e) {
-								System.out.println("Error writing track");
-							}
-						}
+			synchronized (fileOutStream) {
+				while( in.available() > 0 ) {
+					int sample = in.read();
+					fileBytes[0] = (byte) (sample >> 24);
+					fileBytes[1] = (byte) (sample >> 16);
+					fileBytes[2] = (byte) (sample >> 8);
+					try {
+						fileOutStream.write(fileBytes);
+					} catch (IOException e) {
+						System.out.println("Error writing track");
 					}
 				}
 			}
