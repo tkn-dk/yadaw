@@ -16,11 +16,11 @@ public class AudioStream {
 	
 	public AudioStream( ) {
 		this( 16384 );
-		syncListeners = new HashSet<SyncListener>();
 	}
 
 	public AudioStream( int bufferSize ) {
 		buffer = new int[bufferSize];
+		syncListeners = new HashSet<SyncListener>();
 	}
 	
 	public int read() {
