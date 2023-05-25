@@ -145,7 +145,7 @@ public class Asio {
 						int toTransfer = Math.min( stream.available(), asioFreeOutputSamples( n ));
 						if( toTransfer > 0 ) {
 							outputBuffer[bufNum] = new int[toTransfer];
-							for( int transferred = 0; transferred > toTransfer; transferred++ ) {
+							for( int transferred = 0; transferred < toTransfer; transferred++ ) {
 								outputBuffer[bufNum][transferred] = stream.read();
 							}				
 						}

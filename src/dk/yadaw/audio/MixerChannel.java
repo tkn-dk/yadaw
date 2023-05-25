@@ -16,6 +16,8 @@ public class MixerChannel implements SyncListener {
 	private int[] sendGains;
 	private int masterLeftGain;
 	private int masterRightGain;
+	private long samplePos;
+	private int[] inBuffer;
 
 	/**
 	 * Mixer channel constructor
@@ -25,6 +27,7 @@ public class MixerChannel implements SyncListener {
 	public MixerChannel( String label, int nofSends ) {
 		sends = new AudioStream[nofSends];
 		sendGains = new int[nofSends];
+		inBuffer = new int[2048];
 		
 		for( int n = 0; n < nofSends; n++ ) {
 			sends[n] = new AudioStream();
@@ -100,42 +103,43 @@ public class MixerChannel implements SyncListener {
 	}
 	
 	@Override
-	public void audioSync(AudioStream s) {
-		if( s == masterOutLeft ) {
-			if ( !masterOutLeft.isFull() ) {
-				AudioStreamBuffer inbuf = in.read();
-				if (inbuf != null) {
-					routeSends( inbuf );
-					routeMasters( inbuf );
-				}
-			}
+	public void audioSync( long samplePos ) {
+		int deltaPos = (int) (samplePos - this.samplePos);
+		if (deltaPos > 0) {
+			this.samplePos = samplePos;
+			processInput(4 * deltaPos);
 		}
 	}
 	
-	private void routeSends( AudioStreamBuffer inputBuf ) {
-		int[] inBuffer = inputBuf.getBuffer();
-		for( int snd = 0; snd < sends.length; snd++ ) {
-			int[] sendBuffer = new int[inBuffer.length];
-			for( int sample = 0; sample < inBuffer.length; sample++ ) {
-				long ss = ( long )inBuffer[sample] * sendGains[snd];
-				sendBuffer[sample] = ( int )( ss >> 32 );
-			}
-			sends[snd].write(sendBuffer, inputBuf.getSamplePos() );
+	public void processInput( int processWish ) {
+		int toTransfer = Math.min( Math.min( in.available(), 4 * processWish ), sends[0].available() );
+		int transferredSamples = 0;
+		
+		while( transferredSamples < toTransfer ) {
+			inBuffer[transferredSamples++] = in.read();
+		}
+		
+		for( int n = 0; n < sends.length; n++ ) {
+			routeSend( n, toTransfer );
+		}
+		
+		routeMasters( toTransfer );
+	}
+	
+	private void routeSend( int send, int toProcess ) {
+		for( int n = 0; n < toProcess; n++ ) {
+			int sample = ( int )( (( long )inBuffer[n] * sendGains[send] ) >> 32 );
+			sends[send].write( sample );
 		}
 	}
 	
-	private void routeMasters( AudioStreamBuffer audioBuf ) {
-		int[] inBuffer = audioBuf.getBuffer();
-		int[] masterLeftBuffer = new int[inBuffer.length];
-		int[] masterRightBuffer = new int[inBuffer.length];
-		for( int sample = 0; sample < inBuffer.length; sample++ ) {
-			long sl = ( long )inBuffer[sample] * masterLeftGain;
-			long sr = ( long )inBuffer[sample] * masterRightGain;
-			masterLeftBuffer[sample] = ( int )( sl >> 32 );
-			masterRightBuffer[sample] = ( int )(sr >> 32 );			
-		}
-		masterOutLeft.write( masterLeftBuffer, audioBuf.getSamplePos() );
-		masterOutRight.write( masterRightBuffer, audioBuf.getSamplePos() );		
+	private void routeMasters( int toProcess ) {
+		for( int n = 0; n < toProcess; n++ ) {
+			int leftSample = ( int )( (( long )inBuffer[n] * masterLeftGain ) >> 32 );
+			int rightSample = ( int )( (( long )inBuffer[n] * masterRightGain ) >> 32 );
+			masterOutLeft.write( leftSample );
+			masterOutRight.write( rightSample );
+		}		
 	}
 
 }

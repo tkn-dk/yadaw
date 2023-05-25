@@ -54,29 +54,6 @@ public class Mixer implements SyncListener {
 	}
 	
 	private void sumMasters() {
-		int leftInputs[][] = new int[channels.size()][];
-		int rightInputs[][] = new int[channels.size()][];
-		int leftOutput[] = new int[bufferLength];
-		int rightOutput[] = new int[bufferLength];
-		
-		for( int ch = 0; ch < channels.size(); ch++ ) {
-			lBuf = channels.get(ch).getMasterLeft().read();
-			leftInputs[ch] = lBuf.getBuffer();
-			rBuf = channels.get(ch).getMasterRight().read();
-			rightInputs[ch] = rBuf.getBuffer();
-		}
-		
-		for( int sample = 0; sample < bufferLength; sample++ ) {
-			leftOutput[sample] = 0;
-			rightOutput[sample] = 0;
-			for( int ch = 0; ch < channels.size(); ch++ ) {
-				leftOutput[sample] += ( ( long )leftInputs[ch][sample] * masterGainLeft ) >> 32;
-				rightOutput[sample] += ( ( long )rightInputs[ch][sample] * masterGainRight ) >> 32;
-			}
-		}
-		
-		sumLeft.write( leftOutput, lBuf.getSamplePos() );
-		sumRight.write(rightOutput, rBuf.getSamplePos() );
 	}
 	
 }
