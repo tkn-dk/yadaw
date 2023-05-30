@@ -1,6 +1,7 @@
 package dk.yadaw.datamodel;
 
 import java.util.Collection;
+import java.util.LinkedList;
 import java.util.Vector;
 
 import dk.yadaw.audio.Asio;
@@ -13,28 +14,57 @@ import dk.yadaw.audio.Mixer;
  */
 public class YadawDataModel {
 	private final int numSends = 2;
-
-	/**
-	 * Enumerations giving IDs to all data objects in model that can be be listened to.
-	 * @author tkn
-	 *
-	 */
-	public enum DataID {
-		YADAW_ALL,
-		YADAW_ASIO_DRIVER_NAME,
-		YADAW_MIXER
-	};
-	
 	private Asio asio;
 	private String asioDriverName;
 	private Collection<DataListenerItem> dataListeners;
 	private Mixer mixer;
+	private Thread dataUpdateThread;
+	private LinkedList<DataEvent>eventQueue;
+	
 		
 	/**
-	 * Constructs data model objects.
+	 * Constructs data model object.
 	 */
 	public YadawDataModel() {
-		asio = new Asio();
+		eventQueue = new LinkedList<DataEvent>();
+		dataUpdateThread = new Thread() {
+
+			@Override
+			public void run() {
+				boolean active = true;
+				setAsio( new Asio());
+				synchronized( this ) {
+					while (active) {
+						while (eventQueue.isEmpty()) {
+							try {
+								System.out.println( "DataModel update thread wait" );
+								wait();
+								System.out.println( "DataModel update thread notified" );
+							} catch (InterruptedException e) {
+								active = false;
+								break;
+							}
+						}
+						
+						if( active && dataListeners != null ) {
+							DataEvent dataEvent = eventQueue.poll();
+							for( DataListenerItem dl : dataListeners ) {
+								System.out.println( "Listener id: " + dl.getID().toString() + ". Event id: " + dataEvent.getID() );
+								if( dl.getID() == DataItemID.YADAW_ALL || dataEvent.getID() == dl.getID() ) {
+									System.out.println( "Sending event from data model thread, id: " + dataEvent.getID().toString());
+									dl.getListener().dataItemUpdated(dataEvent);
+								}
+							}
+						}
+						else {
+							System.out.println( "No update listeners - I guess.");
+						}
+						
+					}
+				}
+			}			
+		};
+		dataUpdateThread.start();
 	}
 
 	/**
@@ -45,13 +75,18 @@ public class YadawDataModel {
 		return asio;
 	}
 	
+	public void setAsio( Asio asio ) {
+		this.asio = asio;
+		queueDataEvent( new DataEvent( DataItemID.YADAW_ASIO, this.asio ));
+	}
+	
 	/**
 	 * Sets the name of the used asio driver in the model.
 	 * @param asioDriverName Asio driver name.
 	 */
 	public void setAsioDriverName( String asioDriverName ) {
 		this.asioDriverName = asioDriverName;
-		notifyUpdateListeners( DataID.YADAW_ASIO_DRIVER_NAME, this.asioDriverName );
+		queueDataEvent(new DataEvent( DataItemID.YADAW_ASIO_DRIVER_NAME, this.asioDriverName ));
 	}
 	
 	/**
@@ -68,7 +103,7 @@ public class YadawDataModel {
 	 */
 	public void setMixer( Mixer mixer ) {
 		this.mixer = mixer;
-		notifyUpdateListeners( DataID.YADAW_MIXER, this.mixer );
+		queueDataEvent( new DataEvent( DataItemID.YADAW_MIXER, this.mixer ));
 	}
 	
 	/**
@@ -79,30 +114,28 @@ public class YadawDataModel {
 		return numSends;
 	}
 	
-	public void addUpdateListener( DataID id, DataModelUpdateListenerIf listener ) {
+	public void addUpdateListener( DataItemID id, DataModelUpdateListenerIf listener ) {
 		if( dataListeners == null ) {
 			dataListeners = new Vector<DataListenerItem>();
 		}
 		dataListeners.add( new DataListenerItem( id, listener ));
 	}
 	
-	public void deleteUpdateListener( DataID id, DataModelUpdateListenerIf listener ) {
+	public void deleteUpdateListener( DataItemID id, DataModelUpdateListenerIf listener ) {
 		for( DataListenerItem i : dataListeners ) {
-			if( ( DataID )i.getId() == id && i.getListener() == listener ) {
+			if( ( DataItemID )i.getID() == id && i.getListener() == listener ) {
 				dataListeners.remove( i );
 			}
 		}
 	}
 	
-	private void notifyUpdateListeners( DataID id, Object dataObject ) {
+	private void queueDataEvent( DataEvent dataEvent ) {
 		if (dataListeners != null) {
-			for (DataListenerItem i : dataListeners) {
-				DataID did = (DataID) i.getId();
-				if ( did == id || did == DataID.YADAW_ALL ) {
-					i.getListener().dataItemUpdated(id, dataObject );
-				}
+			System.out.println( "Queueing data event id: " + dataEvent.getID().toString() );
+			synchronized( dataUpdateThread ) {
+				eventQueue.add(dataEvent);
+				dataUpdateThread.notify();
 			}
 		}
-
 	}
 }

@@ -6,5 +6,5 @@ package dk.yadaw.datamodel;
  *
  */
 public interface DataModelUpdateListenerIf {
-	public void dataItemUpdated( Object itemID, Object itemData );
+	public void dataItemUpdated( DataEvent dataEvent );
 }

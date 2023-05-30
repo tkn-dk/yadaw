@@ -91,10 +91,11 @@ public class YadawFrame extends JFrame {
 		});
 	}
 	
-	public void addPanel( String label ) {
+	public TrackPanel addPanel( String label ) {
 		TrackPanel tp = new TrackPanel( label );
 		trackPanels.add( tp );
 		repaint();
+		return tp;
 	}
 	
 	public void deletePanel( String label ) {

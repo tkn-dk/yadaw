@@ -2,14 +2,14 @@ package dk.yadaw.datamodel;
 
 public class DataListenerItem {
 	private DataModelUpdateListenerIf listener;
-	private Object id;
+	private DataItemID id;
 
-	public DataListenerItem(Object id, DataModelUpdateListenerIf listener) {
+	public DataListenerItem(DataItemID id, DataModelUpdateListenerIf listener) {
 		this.listener = listener;
 		this.id = id;
 	}
 
-	public Object getId() {
+	public DataItemID getID() {
 		return id;
 	}
 
