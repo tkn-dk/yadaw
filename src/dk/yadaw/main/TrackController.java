@@ -1,5 +1,6 @@
 package dk.yadaw.main;
 
+import dk.yadaw.audio.AudioTrack;
 import dk.yadaw.audio.Mixer;
 import dk.yadaw.audio.MixerChannel;
 import dk.yadaw.audio.SyncListener;
@@ -14,12 +15,29 @@ import dk.yadaw.widgets.VUMeter;
 public class TrackController implements SyncListener {
 	private MixerChannel mixerChannel;
 	private TrackPanel trackPanel;
+	private AudioTrack audioTrack;
 	private long samplePos;
+	private AudioTrack fileTrack;
+	private String trackFileName;
+	private boolean isRecording;
 	
-	public TrackController( MixerChannel channel, TrackPanel panel ) {
-		this.mixerChannel = channel;
-		this.trackPanel = panel;
-		this.mixerChannel.getIn().addSyncListener(this);
+	public TrackController( String trackFileName, MixerChannel channel, TrackPanel panel ) {
+		mixerChannel = channel;
+		trackPanel = panel;
+		this.trackFileName = trackFileName;
+		mixerChannel.getIn().addSyncListener(this);
+		audioTrack = new AudioTrack();
+	}
+	
+	public void setRecording() {
+		isRecording = true;
+		audioTrack.setInput( mixerChannel.getIn());
+		//TODO: Find a way to still feed the stream to mixer channel - the line above cuts of 
+	}
+	
+	public void setPlayback() {
+		isRecording = false;
+		audioTrack.setOutput( mixerChannel.getIn());
 	}
 
 	@Override

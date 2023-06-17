@@ -8,7 +8,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.text.DecimalFormat;
 
 /**
  * Represents and audio track having both an input stream for recording and
@@ -23,9 +22,6 @@ public class AudioTrack implements SyncListener {
 	private BufferedOutputStream fileOutStream;
 	private BufferedInputStream fileInStream;
 	private byte[] fileBytes;
-	private int sampleRate;
-	private DecimalFormat df;
-	private int posd;
 	private boolean fileReadCompleted;
 
 	/**
@@ -34,10 +30,8 @@ public class AudioTrack implements SyncListener {
 	 * @param name     Name of track
 	 * @param filePath Path to store track files
 	 */
-	public AudioTrack(int sampleRate, int sampleBufferSize ) {
+	public AudioTrack() {
 		fileBytes = new byte[3];
-		this.sampleRate = sampleRate;
-		df = new DecimalFormat("#.###");
 	}
 
 	public void recordStart(String trackFile) throws IOException {
@@ -82,6 +76,10 @@ public class AudioTrack implements SyncListener {
 			System.out.println("No output stream for playback");
 		}
 	}
+	
+	public void playbackStop() {
+		
+	}
 
 	public AudioStream getInput() {
 		return in;
@@ -110,13 +108,7 @@ public class AudioTrack implements SyncListener {
 		
 		if( out != null ) {
 			handleOutputBufferTransfer();
-		}
-		
-		if (++posd >= 10) {
-			float timecode = (float) samplePos / (float) sampleRate;
-			System.out.print("\r" + df.format(timecode));
-			posd = 0;
-		}
+		}		
 	}
 	
 	private void handleOutputBufferTransfer() {

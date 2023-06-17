@@ -401,6 +401,9 @@ JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioPrepBuffers(JNIEnv *env, job
 	}
 
 	asioCtx.sampleContainer = new YSampleContainer( asioCtx.armedInputsMask, asioCtx.armedOutputsMask, CIRC_BUFFER_SIZE );
+
+	printf( "\njni prepBuffer: Nof inputs: %u, nof outputs %u\n", asioCtx.nofArmedInputs, asioCtx.nofArmedOutputs );
+
 	return 0;
 }
 

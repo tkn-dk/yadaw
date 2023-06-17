@@ -1,16 +1,20 @@
 package dk.yadaw.main;
 
+import java.awt.Dimension;
 import java.awt.GridLayout;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.util.ArrayList;
+import java.util.Collection;
 
 import javax.swing.JFrame;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
+import javax.swing.SwingUtilities;
 
 import dk.yadaw.widgets.SelectAsioDlg;
 import dk.yadaw.widgets.TrackPanel;
@@ -19,18 +23,17 @@ import dk.yadaw.widgets.ViewAudioParmsDlg;
 public class YadawFrame extends JFrame {
 	private static final long serialVersionUID = 1L;
 	private ArrayList<TrackPanel> trackPanels;
+	private ArrayList<TrackPanel> consolidatedPanelAdditions;
 	
 	public YadawFrame() {
 		super( "Yadaw" );
 		setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE );
-		setExtendedState( JFrame.MAXIMIZED_BOTH );
+		setExtendedState( JFrame.NORMAL );
 		setLayout( new GridLayout( 0, 1 ) );
 		
 		trackPanels = new ArrayList<TrackPanel>();
-
-		pack();
-		setVisible(true);
-		
+		consolidatedPanelAdditions = new ArrayList<TrackPanel>();
+			
 		JMenuBar menuBar = new JMenuBar();
 		
 		// File menu
@@ -78,6 +81,9 @@ public class YadawFrame extends JFrame {
 		
 		setJMenuBar(menuBar);
 		
+		sizeAndPlace( 400, 300 );
+		setVisible(true);
+		
 		addComponentListener( new ComponentAdapter() {
 
 			@Override
@@ -91,21 +97,41 @@ public class YadawFrame extends JFrame {
 		});
 	}
 	
-	public TrackPanel addPanel( String label ) {
-		TrackPanel tp = new TrackPanel( label );
-		trackPanels.add( tp );
-		repaint();
-		return tp;
+	public void newConsolidatedPanel() {
+		consolidatedPanelAdditions.clear();
+	}
+	
+	public void addConsolidatedPanel( TrackPanel tp ) {
+		consolidatedPanelAdditions.add(tp);
+	}
+	
+	public void commitConsolidatedPanels() {
+		SwingUtilities.invokeLater(() -> {
+			for (TrackPanel tp : consolidatedPanelAdditions) {
+				trackPanels.add(tp);
+				add(tp);
+			}
+			pack();
+			Dimension dim = getSize();
+			sizeAndPlace( dim.width, dim.height );
+			revalidate();
+			repaint();
+		});		
 	}
 	
 	public void deletePanel( String label ) {
 		for( TrackPanel tp : trackPanels ) {
 			if( tp.getLabel().equals(label)) {
 				trackPanels.remove(tp);
-				repaint();
 				break;
 			}
 		}
 	}
 
+	private void sizeAndPlace( int width, int height) {
+		Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+		int x = ( screenSize.width - width ) / 2;
+		int y = ( screenSize.height - height ) / 2;
+		setBounds( x, y, width, height );
+	}
 }

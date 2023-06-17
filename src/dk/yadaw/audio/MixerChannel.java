@@ -115,6 +115,7 @@ public class MixerChannel implements SyncListener {
 		int toTransfer = Math.min( Math.min( in.available(), 4 * processWish ), sends[0].available() );
 		int transferredSamples = 0;
 		
+		System.out.println( "Read " + toTransfer + " from input buffer" );
 		while( transferredSamples < toTransfer ) {
 			inBuffer[transferredSamples++] = in.read();
 		}

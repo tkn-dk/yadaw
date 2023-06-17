@@ -1,5 +1,6 @@
 package dk.yadaw.main;
 
+import java.awt.Dimension;
 import java.util.ArrayList;
 import java.util.Collection;
 
@@ -38,7 +39,6 @@ public class YadawController implements DataModelUpdateListenerIf {
 			@Override
 			public void run() {
 				yaFrame = new YadawFrame();
-				yaFrame.setVisible(true);
 			}
 			
 		});
@@ -54,7 +54,7 @@ public class YadawController implements DataModelUpdateListenerIf {
 			return;
 		}
 		
-		if( asio.connectInput(0, mixer.getMasterRight()) ) {
+		if( asio.connectInput(1, mixer.getMasterRight()) ) {
 			System.out.println( "Right connect");
 		}
 		else {
@@ -62,15 +62,17 @@ public class YadawController implements DataModelUpdateListenerIf {
 		}
 		
 		yaModel.setMixer(mixer);
+
+		yaFrame.newConsolidatedPanel();
 		
 		for( int ch = 0; ch < asio.getNofInputs(); ch++ ) {
 			String label = "IN" + (ch+1);
 			MixerChannel mxc = new MixerChannel( label, yaModel.getNumSends());
 			mxc.setIn( new AudioStream() );
 			mixer.addChannel( mxc );
-			TrackPanel tp = yaFrame.addPanel(label);
-			trackControllers.add( new TrackController( mxc, tp ));
-			
+			TrackPanel tp =  new TrackPanel( label );
+			trackControllers.add( new TrackController( label, mxc, tp ));
+			yaFrame.addConsolidatedPanel(tp);
 			mxc.setIn( new AudioStream() );
 			if( asio.connectOutput( ch, mxc.getIn() )) {
 				System.out.println( "Mixer channel " + mxc.getLabel() + " connected to ASIO output stream (analog in)");
@@ -80,7 +82,9 @@ public class YadawController implements DataModelUpdateListenerIf {
 			}
 		}
 		
-		asio.start();
+		yaFrame.commitConsolidatedPanels();
+
+		//asio.start();
 	}
 
 	@Override
