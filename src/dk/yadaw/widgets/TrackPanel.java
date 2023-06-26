@@ -9,6 +9,8 @@ import java.awt.Dimension;
 import javax.swing.JPanel;
 
 public class TrackPanel extends JPanel {
+
+	private static final long serialVersionUID = 1L;
 	private Potentiometer volume;
 	private Potentiometer pan;
 	private Potentiometer send1;
@@ -97,6 +99,10 @@ public class TrackPanel extends JPanel {
 	
 	public VUMeter getOutRightVUMeter() {
 		return vuOutRight;
+	}
+	
+	public boolean getRecordState() {
+		return inCtrl.getRecordState();
 	}
 
 }

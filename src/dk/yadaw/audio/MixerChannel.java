@@ -9,6 +9,7 @@ package dk.yadaw.audio;
  */
 public class MixerChannel implements SyncListener {
 	private String label;
+	private int channelNumber;
 	private AudioStream in;
 	private AudioStream[] sends;
 	private AudioStream masterOutLeft;
@@ -24,10 +25,11 @@ public class MixerChannel implements SyncListener {
 	 * @param label Label for mixertrack - used to construct track file name
 	 * when recording.
 	 */
-	public MixerChannel( String label, int nofSends ) {
+	public MixerChannel( String label, int channelNumber, int nofSends ) {
 		sends = new AudioStream[nofSends];
 		sendGains = new int[nofSends];
 		inBuffer = new int[2048];
+		this.channelNumber = channelNumber;
 		
 		for( int n = 0; n < nofSends; n++ ) {
 			sends[n] = new AudioStream();
@@ -35,10 +37,8 @@ public class MixerChannel implements SyncListener {
 		}
 		
 		this.label = label;
-		masterOutLeft = new AudioStream();
-		masterOutRight = new AudioStream();
-		// All synchronization is done on masterOutLeft
-		masterOutLeft.addSyncListener(this);
+		masterOutLeft = new AudioStream( label + "out left" );
+		masterOutRight = new AudioStream( label + "out right" );
 	}
 
 	public AudioStream getSend( int num ) {
@@ -60,7 +60,12 @@ public class MixerChannel implements SyncListener {
 		return in;
 	}
 	
+	public int getChannelNumber() {
+		return channelNumber;
+	}
+	
 	public void setIn( AudioStream in ) {
+		System.out.println( "MixerChannel " + label + " set " + in + " as input");
 		this.in = in;
 	}
 	
@@ -103,25 +108,30 @@ public class MixerChannel implements SyncListener {
 	}
 	
 	@Override
-	public void audioSync( long samplePos ) {
-		int deltaPos = (int) (samplePos - this.samplePos);
+	public void audioSync( long newSamplePos ) {
+		in.sync(newSamplePos);
+		int deltaPos = (int) (newSamplePos - samplePos);
 		if (deltaPos > 0) {
-			this.samplePos = samplePos;
+			samplePos = newSamplePos;
 			processInput(4 * deltaPos);
 		}
 	}
 	
 	public void processInput( int processWish ) {
-		int toTransfer = Math.min( Math.min( in.available(), 4 * processWish ), sends[0].available() );
+		int toTransfer = Math.min( in.available(), 4 * processWish );
 		int transferredSamples = 0;
 		
-		System.out.println( "Read " + toTransfer + " from input buffer" );
+		if( toTransfer == 0 ) {
+			System.out.println( "MixerChannel no transfer:" );
+			System.out.println( "  processWish:" + processWish + ", in.available(): " + in.available() + ", sends[0].available(): " + sends[0].available() );
+		}
+		
 		while( transferredSamples < toTransfer ) {
 			inBuffer[transferredSamples++] = in.read();
 		}
 		
 		for( int n = 0; n < sends.length; n++ ) {
-			routeSend( n, toTransfer );
+			//routeSend( n, toTransfer );
 		}
 		
 		routeMasters( toTransfer );
@@ -134,8 +144,9 @@ public class MixerChannel implements SyncListener {
 		}
 	}
 	
-	private void routeMasters( int toProcess ) {
-		for( int n = 0; n < toProcess; n++ ) {
+	private void routeMasters( int toTransfer ) {
+		System.out.println( "MixerChannel " + label + " routeMasters " + toTransfer );
+		for( int n = 0; n < toTransfer; n++ ) {
 			int leftSample = ( int )( (( long )inBuffer[n] * masterLeftGain ) >> 32 );
 			int rightSample = ( int )( (( long )inBuffer[n] * masterRightGain ) >> 32 );
 			masterOutLeft.write( leftSample );

@@ -23,6 +23,7 @@ public class AudioTrack implements SyncListener {
 	private BufferedInputStream fileInStream;
 	private byte[] fileBytes;
 	private boolean fileReadCompleted;
+	private String trackFile;
 
 	/**
 	 * Constructor
@@ -40,6 +41,7 @@ public class AudioTrack implements SyncListener {
 				System.out.println("Opening record file: " + trackFile);
 				OutputStream file = new FileOutputStream(trackFile);
 				fileOutStream = new BufferedOutputStream(file);
+				this.trackFile = trackFile;
 			} catch (FileNotFoundException e) {
 				System.out.println("Not found: " + trackFile);
 				return;
@@ -68,6 +70,7 @@ public class AudioTrack implements SyncListener {
 				fileInStream = new BufferedInputStream(file);
 				fileReadCompleted = false;
 				handleOutputBufferTransfer();
+				this.trackFile = trackFile;
 			} catch (FileNotFoundException e) {
 				System.out.println("Not found: " + trackFile);
 				return;
@@ -78,7 +81,14 @@ public class AudioTrack implements SyncListener {
 	}
 	
 	public void playbackStop() {
-		
+		synchronized (fileInStream ) {
+			fileReadCompleted = true;
+			try {
+				fileInStream.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 	}
 
 	public AudioStream getInput() {
@@ -86,22 +96,29 @@ public class AudioTrack implements SyncListener {
 	}
 
 	public void setInput(AudioStream in) {
+		System.out.println( "AudioTrack set " + in + " as input ");
 		this.in = in;
-		in.addSyncListener(this);
+		if (in != null) {
+			in.addSyncListener(this);
+		}
 	}
 
 	public AudioStream getOutput() {
-
 		return out;
 	}
 
 	public void setOutput(AudioStream out) {
+		System.out.println( "AudioTrack set " + out + " as output ");
 		this.out = out;
-		out.addSyncListener(this);
+		if (out != null) {
+			out.addSyncListener(this);
+		}
 	}
 
 	@Override
-	public void audioSync( long samplePos ) {		
+	public void audioSync( long samplePos ) {
+		System.out.println( "AudioTrack sync " + samplePos );
+		
 		if( in != null ) {
 			handleInputBufferTransfer();
 		}
@@ -123,6 +140,7 @@ public class AudioTrack implements SyncListener {
 			}
 			else {
 				synchronized (fileInStream) {
+					int t = 0;
 					while (!out.isFull() && !fileReadCompleted) {
 						try {
 							int rdlen = fileInStream.read(fileBytes);
@@ -130,6 +148,7 @@ public class AudioTrack implements SyncListener {
 								int sample = ((fileBytes[0] & 0xff) << 24) | ((fileBytes[1] & 0xff) << 16)
 										| ((fileBytes[0] & 0xff) << 8);
 								out.write( sample );
+								t++;
 							} 
 							else {
 								fileInStream.close();
@@ -140,6 +159,7 @@ public class AudioTrack implements SyncListener {
 							e.printStackTrace();
 						}
 					}
+					System.out.println( "AudioTrack " + trackFile + " transfer " + t );
 				}
 			}
 		}

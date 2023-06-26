@@ -6,8 +6,6 @@ import java.util.Collection;
 public class YadawCmd {
 	private Asio asio; 
 	private Thread asioThread;
-	private int sampleRate;
-	private int bufferSize;
 	
 	public YadawCmd() {
 		asio = new Asio();
@@ -21,8 +19,6 @@ public class YadawCmd {
 		
 		try {
 			asio.openDriver(driverName);
-			sampleRate = ( int )asio.getSamplerate();
-			bufferSize = asio.getBufferSize();
 		} catch (AsioException e) {
 			System.out.println( e );
 			return false;

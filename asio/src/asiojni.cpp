@@ -333,9 +333,9 @@ JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioPrepBuffers(JNIEnv *env, job
 	int nofArmedOutputs = 0;
 	int nofArmedInputs = 0;
 	unsigned int mask = 1;
-
 	if( asioCtx.armedInputsMask == 0 && asioCtx.armedOutputsMask == 0 )
 	{
+		printf( "JNI asioPrepBuffer: No inputs or outputs set\n");
 		return (jint )-1;
 	}
 
@@ -387,6 +387,7 @@ JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioPrepBuffers(JNIEnv *env, job
 	asioCtx.isFirstInputSampleBuf = true;
 
 	prepCallbacks();
+
 	ASIOError err = ASIOCreateBuffers( asioCtx.buffers, numChannels, asioCtx.sampleBufferSize, &asioCtx.callBacks );
 	if( err != ASE_OK && err != ASE_SUCCESS )
 	{
@@ -402,7 +403,7 @@ JNIEXPORT jint JNICALL Java_dk_yadaw_audio_Asio_asioPrepBuffers(JNIEnv *env, job
 
 	asioCtx.sampleContainer = new YSampleContainer( asioCtx.armedInputsMask, asioCtx.armedOutputsMask, CIRC_BUFFER_SIZE );
 
-	printf( "\njni prepBuffer: Nof inputs: %u, nof outputs %u\n", asioCtx.nofArmedInputs, asioCtx.nofArmedOutputs );
+	printf( "\nJNI  asioPrepBuffer: Nof inputs: %u, nof outputs %u\n", asioCtx.nofArmedInputs, asioCtx.nofArmedOutputs );
 
 	return 0;
 }

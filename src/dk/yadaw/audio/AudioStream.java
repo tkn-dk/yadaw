@@ -7,12 +7,18 @@ import java.util.Set;
  * Represents an audio stream.
  */
 public class AudioStream {
+	String label;
 	int[] buffer;
 	long samplePos;
 	int wptr;
 	int rptr;
 	int cptr;
 	private Set<SyncListener> syncListeners;
+	
+	public AudioStream( String label ) {
+		this( 16384 );
+		this.label = label;
+	}
 	
 	public AudioStream( ) {
 		this( 16384 );
@@ -21,6 +27,7 @@ public class AudioStream {
 	public AudioStream( int bufferSize ) {
 		buffer = new int[bufferSize];
 		syncListeners = new HashSet<SyncListener>();
+		label = "none";
 	}
 	
 	public int read() {
@@ -54,7 +61,7 @@ public class AudioStream {
 	}
 	
 	public int free() {
-		return ( cptr >= wptr ) ? ( cptr - wptr ) : ( buffer.length - wptr + cptr );
+		return buffer.length - (( cptr >= wptr ) ? ( cptr - wptr ) : ( buffer.length - wptr + cptr ));
 	}
 	
 	public boolean isFull() {
@@ -118,6 +125,10 @@ public class AudioStream {
 		for( SyncListener s : syncListeners ) {
 			s.audioSync( newSamplePos );
 		}
+	}
+	
+	public String toString() {
+		return "AudioStream: " + label;
 	}
 	
 }

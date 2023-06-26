@@ -1,6 +1,5 @@
 package dk.yadaw.main;
 
-import java.awt.Dimension;
 import java.util.ArrayList;
 import java.util.Collection;
 
@@ -26,6 +25,7 @@ import dk.yadaw.widgets.TrackPanel;
 public class YadawController implements DataModelUpdateListenerIf {
 	YadawDataModel yaModel;
 	YadawFrame yaFrame;
+	Thread soundThread;
 	Asio asio;
 	Collection<TrackController> trackControllers;
 	
@@ -42,11 +42,22 @@ public class YadawController implements DataModelUpdateListenerIf {
 			}
 			
 		});
+		
+		soundThread = new Thread() {
+			@Override
+			public void run() {
+				if( !asio.start() ) {
+					System.out.println( "Asio start error ");
+					return;
+				}				
+			}			
+		};
 	}
 	
 	private void setupMixer() {
-		Mixer mixer = new Mixer( asio.getBufferSize() );
-		mixer.setMaster( new AudioStream(), new AudioStream());
+		Mixer mixer = new Mixer();
+		mixer.setMaster( new AudioStream( "master L"), new AudioStream( "master R"));
+		
 		if( asio.connectInput(0, mixer.getMasterLeft()) ) {
 			System.out.println( "Left connect" );
 		}
@@ -62,29 +73,31 @@ public class YadawController implements DataModelUpdateListenerIf {
 		}
 		
 		yaModel.setMixer(mixer);
-
 		yaFrame.newConsolidatedPanel();
 		
-		for( int ch = 0; ch < asio.getNofInputs(); ch++ ) {
+		for( int ch = 0; ch < 2; ch++ ) {
 			String label = "IN" + (ch+1);
-			MixerChannel mxc = new MixerChannel( label, yaModel.getNumSends());
-			mxc.setIn( new AudioStream() );
+			MixerChannel mxc = new MixerChannel( label, ch, yaModel.getNumSends());
 			mixer.addChannel( mxc );
 			TrackPanel tp =  new TrackPanel( label );
 			trackControllers.add( new TrackController( label, mxc, tp ));
 			yaFrame.addConsolidatedPanel(tp);
-			mxc.setIn( new AudioStream() );
-			if( asio.connectOutput( ch, mxc.getIn() )) {
-				System.out.println( "Mixer channel " + mxc.getLabel() + " connected to ASIO output stream (analog in)");
-			}
-			else {
-				return;
-			}
 		}
 		
 		yaFrame.commitConsolidatedPanels();
-
-		//asio.start();
+		setPlaybackAndRecording();
+		
+		/*AudioTrack track = new AudioTrack();
+		AudioStream playStream = new AudioStream();
+		asio.connectInput(0, playStream);
+		track.setOutput(playStream);
+		try {
+			track.playbackStart( "IN1.raw");
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		*/
+		soundThread.start();
 	}
 
 	@Override
@@ -112,6 +125,25 @@ public class YadawController implements DataModelUpdateListenerIf {
 	}
 	
 	
-	
+	private void setPlaybackAndRecording() {
+		int ch = 0;
+		for( TrackController tc : trackControllers ) {
+			tc.setPlaybackOrRecord( asio );
+			if( tc.isRecording() ) {
+				System.out.println( "Record on " + tc.getMixerChannel().getLabel() );
+				MixerChannel mxc = tc.getMixerChannel();
+				if( asio.connectOutput( ch, mxc.getIn() )) {
+					System.out.println( "Mixer channel " + mxc.getLabel() + " connected to ASIO output stream (analog in)");
+				}
+				else {
+					System.out.println( "ASIO output connect error");
+				}			
+			}
+			else {
+				System.out.println( "Playback on " + tc.getMixerChannel().getLabel() );
+			}
 
+		}
+	}
+	
 }

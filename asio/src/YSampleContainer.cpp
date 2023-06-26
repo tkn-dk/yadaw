@@ -44,7 +44,7 @@ YSampleContainer::YSampleContainer( uint32_t inputMask, uint32_t outputMask, siz
 
 		if( outputChannelMap[channel] != 0xff )
 		{
-			outputBuffers[inputChannelMap[channel]] = new YCircBuf<long>( numberOfSamples );
+			outputBuffers[outputChannelMap[channel]] = new YCircBuf<long>( numberOfSamples );
 		}
 	}
 }

@@ -11,6 +11,7 @@ import java.awt.event.MouseListener;
 import java.awt.geom.Rectangle2D;
 
 public class InputControls extends Component implements MouseListener {
+	private static final long serialVersionUID = 1L;
 	private boolean record;
 	private String label;
     private final Font font = new Font( "arial", Font.PLAIN, 12);
@@ -81,6 +82,8 @@ public class InputControls extends Component implements MouseListener {
 		
 	}
 	
-	
+	public boolean getRecordState() {
+		return record;
+	}
 
 }

@@ -125,7 +125,8 @@ public class Asio {
 		return samplerate;
 	}
 	
-	public boolean start() {		
+	public boolean start() {
+		System.out.println( "Asio start");
 		if( asioPrepBuffers() < 0 ) {
 			System.out.println( "ASIO Buffer error" );
 			return false;
@@ -144,6 +145,7 @@ public class Asio {
 					if (stream != null) {
 						int toTransfer = Math.min( stream.available(), asioFreeOutputSamples( n ));
 						if( toTransfer > 0 ) {
+							System.out.println( "Asio out transfer " + toTransfer );
 							outputBuffer[bufNum] = new int[toTransfer];
 							for( int transferred = 0; transferred < toTransfer; transferred++ ) {
 								outputBuffer[bufNum][transferred] = stream.read();
@@ -151,6 +153,7 @@ public class Asio {
 						}
 						else {
 							outputBuffer[bufNum] = null;
+							System.out.println( "Asio no output. Stream: " + stream.available() + ", asio free: " + asioFreeOutputSamples( n ) );
 						}
 						bufNum++;
 					}
@@ -240,6 +243,7 @@ public class Asio {
 	}
 	
 	private void syncAllStreams( long samplePos ) {
+		System.out.println("Asio sync " + samplePos );
 		for( AudioStream as : outputStreams ) {
 			if( as != null ) {
 				as.sync(samplePos);

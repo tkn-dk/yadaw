@@ -11,14 +11,12 @@ public class Mixer implements SyncListener {
 	private ArrayList<MixerChannel> channels;
 	private AudioStream sumLeft;
 	private AudioStream sumRight;
-	private int bufferLength;
 	private int masterGainLeft;
 	private int masterGainRight;
 	private long samplePos;
 	
-	public Mixer( int bufferLength ) {
+	public Mixer( ) {
 		channels = new ArrayList<MixerChannel>();
-		this.bufferLength = bufferLength;
 	}
 
 	public void setMaster( AudioStream left, AudioStream right ) {
@@ -32,8 +30,8 @@ public class Mixer implements SyncListener {
 		masterGainRight = right;
 	}
 	
-	public void addChannel( String label,  int numSends ) {
-		addChannel( new MixerChannel( label, numSends ));
+	public void addChannel( String label, int channelNumber, int numSends ) {
+		addChannel( new MixerChannel( label, channelNumber, numSends ));
 	}
 	
 	public void addChannel( MixerChannel mxc ) {
@@ -59,21 +57,22 @@ public class Mixer implements SyncListener {
 	
 	@Override
 	public void audioSync( long newSamplePos ) {
+		
 		for( MixerChannel mch : channels ) {
 			mch.audioSync( samplePos );
 		}
 		
 		int deltaPos = ( int )( newSamplePos - samplePos );
 		samplePos = newSamplePos;
-		sumMasters( 4 * deltaPos );	
-	}
-	
-	private void sumMasters( int processWish ) {
+		int processWish = 4 * deltaPos;	
 		int minAvailable = Integer.MAX_VALUE;
 		
 		// We need to find the channel with least amount of samples to process
 		// as mixer channels can be fed from a file or ASIO input
 		for( MixerChannel est : channels ) {
+			// Enough to sync on master left, as the mixechannel is only listening on that.
+			est.getMasterLeft().sync( newSamplePos );
+			
 			// Enough to only check one of the master channels as they are fed from same input
 			int available = est.getMasterLeft().available();
 			if( available < minAvailable ) {
@@ -82,6 +81,12 @@ public class Mixer implements SyncListener {
 		}
 		
 		int toTransfer = Math.min( Math.min( minAvailable, sumLeft.free() ), processWish );
+		if (toTransfer == 0) {
+			System.out.println("Mixer Master no data:");
+			System.out.println("  toTransfer: " + toTransfer + ", minAvailable: " + minAvailable + ", sumLeft.free(): "
+					+ sumLeft.free() + ", minAvailable: " + minAvailable + ", processWish: " + processWish);
+		}
+		
 		for( int sample = 0; sample < toTransfer; sample++ ) {
 			int left = 0;
 			int right = 0;
