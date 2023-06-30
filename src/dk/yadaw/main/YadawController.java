@@ -57,7 +57,7 @@ public class YadawController implements DataModelUpdateListenerIf, SyncListener 
 	}
 	
 	private void setupMixer() {
-		mixer = new Mixer();
+		mixer = new Mixer( asio.getOutputLock() );
 		yaModel.setMixer(mixer);
 		mixer.setMaster( new AudioStream( "master L"), new AudioStream( "master R"));
 		
@@ -77,7 +77,7 @@ public class YadawController implements DataModelUpdateListenerIf, SyncListener 
 		
 		yaFrame.newConsolidatedPanel();
 		
-		for( int ch = 0; ch < 2; ch++ ) {
+		for( int ch = 0; ch < 4; ch++ ) {
 			String label = "IN" + (ch+1);
 			MixerChannel mxc = new MixerChannel( label, ch, yaModel.getNumSends());
 			mixer.addChannel( mxc );

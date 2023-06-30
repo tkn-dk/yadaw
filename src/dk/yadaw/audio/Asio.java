@@ -34,6 +34,7 @@ public class Asio {
 	private AudioStream[] outputStreams;
 	private SyncListener syncListener;
 	private ExecutorService xService;
+	private Object outputLock;
 	
 	/**
 	 * Construct class and initialize the native library. 
@@ -47,6 +48,7 @@ public class Asio {
 			drivers.add(s);
 			s = asioGetNextDriver();
 		}
+		outputLock = new Object();
 	}
 
 	/**
@@ -140,24 +142,42 @@ public class Asio {
 		int[][] inputBuffer = new int[nofActivatedInputs][8 * bufferSize];
 		synchronized (this) {
 			do {
-				int bufNum = 0;
-				for (int n = 0; n < nofOutputs; n++) {
-					AudioStream stream = outputStreams[n];
-					if (stream != null) {
-						int toTransfer = Math.min( stream.available(), asioFreeOutputSamples( n ));
-						if( toTransfer > 0 ) {
-							outputBuffer[bufNum] = new int[toTransfer];
-							for( int transferred = 0; transferred < toTransfer; transferred++ ) {
-								outputBuffer[bufNum][transferred] = stream.read();
-							}				
+				synchronized (outputLock) {
+					try {
+						outputLock.wait( 0, 10000 );
+					}
+					catch ( InterruptedException e ) {
+						System.out.println( "Asio Interrupted waiting for outputLock! ");
+					}
+					boolean allOutputsReady = true;
+					for( AudioStream out : outputStreams ) {
+						if( out != null && !out.getWriteTransferCompleted()) {
+							allOutputsReady = false;
+							break;
 						}
-						else {
-							outputBuffer[bufNum] = null;
+					}
+					
+					if (allOutputsReady) {
+						int bufNum = 0;
+						for (int n = 0; n < nofOutputs; n++) {
+							AudioStream stream = outputStreams[n];
+							if (stream != null) {
+								int toTransfer = Math.min(stream.available(), asioFreeOutputSamples(n));
+								if (toTransfer > 0) {
+									outputBuffer[bufNum] = new int[toTransfer];
+									for (int transferred = 0; transferred < toTransfer; transferred++) {
+										outputBuffer[bufNum][transferred] = stream.read();
+									}
+								} else {
+									outputBuffer[bufNum] = null;
+								}
+								bufNum++;
+								stream.setWriteTransferCompleted(false);
+							}
 						}
-						bufNum++;
+						asioSetOutputSamples(outputBuffer);
 					}
 				}
-				asioSetOutputSamples(outputBuffer);
 				
 				if (!isStarted) {
 					if (asioStart() < 0) {
@@ -239,6 +259,10 @@ public class Asio {
 	
 	public int getNofActivatedOutputs() {
 		return nofActivatedOutputs;
+	}
+	
+	public Object getOutputLock() {
+		return outputLock;
 	}
 	
 	public void setSyncListener( SyncListener listener ) {

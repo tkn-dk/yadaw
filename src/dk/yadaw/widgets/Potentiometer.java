@@ -6,12 +6,15 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.Point;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
+import java.util.HashSet;
+import java.util.Set;
 
 public class Potentiometer extends java.awt.Component implements MouseWheelListener {
-    private final float startAngle = 30;
+
+	private static final long serialVersionUID = 1L;
+	private final float startAngle = 30;
     private final float endAngle = 330;
     private final float pi = ( float )3.14159265359;
     private final BasicStroke stroke = new BasicStroke(1);
@@ -23,6 +26,7 @@ public class Potentiometer extends java.awt.Component implements MouseWheelListe
     private int max = 40;
     private int sizeX, sizeY;
     private String label;
+    private Set<PotentiometerListener> potListeners;
 
     public Potentiometer( int width, String label ) {
         this.sizeX = width;
@@ -30,6 +34,7 @@ public class Potentiometer extends java.awt.Component implements MouseWheelListe
         setPreferredSize(new Dimension(sizeX, sizeY + 1));
         addMouseWheelListener(this);
         this.label = label;
+        potListeners = new HashSet<PotentiometerListener>();
     }
 
     public int getValue() {
@@ -47,6 +52,18 @@ public class Potentiometer extends java.awt.Component implements MouseWheelListe
 
     public void setMax(int max) {
         this.max = max;
+    }
+    
+    public String getLabel() {
+    	return label;
+    }
+    
+    public int getMax() {
+    	return max;
+    }
+    
+    public int getMin() {
+    	return min;
     }
 
     
@@ -115,5 +132,16 @@ public class Potentiometer extends java.awt.Component implements MouseWheelListe
 			value = max;
 		}
 		repaint();
+		updateListeners();
 	}
+    
+    public void addPotentiometerListener( PotentiometerListener listener ) {
+    	potListeners.add( listener );
+    }
+    
+    private void updateListeners() {
+    	for( PotentiometerListener p : potListeners ) {
+    		p.potentiometerUpdate( this );
+    	}
+    }
 }

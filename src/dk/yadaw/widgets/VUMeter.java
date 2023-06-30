@@ -71,17 +71,17 @@ public class VUMeter extends Component {
 			vumRect( g2d, highPart, 2, nlvl, width - 4, zlvl - nlvl );
 			
 			if( peakVal > newVal ) {
-				g2d.drawLine( 2,  plvl,  width - 4, plvl );
+				g2d.drawLine( 2,  plvl,  width - 3, plvl );
 			}
 		}
 		else if( newVal > min ){
 			vumRect( g2d, lowPart, 2, nlvl, width - 4, vumHeight - nlvl );
 			if( peakVal > newVal ) {
-				g2d.drawLine( 2, plvl, width - 4, plvl );							
+				g2d.drawLine( 2, plvl, width - 3, plvl );							
 			}
 		} else if( peakVal > min ) {
 			g2d.setBackground( lowPart );
-			g2d.drawLine( 2, plvl, width - 4, plvl );			
+			g2d.drawLine( 2, plvl, width - 3, plvl );			
 		}
 		super.paint(g);
 	}
@@ -116,6 +116,10 @@ public class VUMeter extends Component {
 	
 	public int getMin() {
 		return min;
+	}
+	
+	public String getLabel() {
+		return label;
 	}
 	
 	/**

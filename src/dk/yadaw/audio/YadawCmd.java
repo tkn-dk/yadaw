@@ -85,7 +85,7 @@ public class YadawCmd implements SyncListener {
 		}
 		
 		delayBuffer = new int[24000];
-		dwp = 4800;
+		dwp = 256;
 		drp = 0;
 		transferStreams();
 		
@@ -162,8 +162,8 @@ public class YadawCmd implements SyncListener {
 
 	private void transferStreams() {
 		while( pTrackStream.available() > 0 ) {
-			int inSample = pTrackStream.read() << 1;
-			delayBuffer[dwp] = inSample + ( int )(((long)delayBuffer[drp] * 0x6fff000 ) >> 32 );
+			int inSample = pTrackStream.read();
+			delayBuffer[dwp] = inSample;
 			dwp++;
 			if( dwp == delayBuffer.length )
 				dwp = 0;
@@ -171,7 +171,7 @@ public class YadawCmd implements SyncListener {
 			if( drp == delayBuffer.length )
 				drp = 0;
 			
-			pLeftStream.write( ( int )( ((long)dSample * 0x7fff0000 ) >> 32 ));
+			pLeftStream.write( inSample );
 			pRightStream.write( inSample );
 		}
 	}

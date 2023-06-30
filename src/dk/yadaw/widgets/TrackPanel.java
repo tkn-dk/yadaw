@@ -29,6 +29,7 @@ public class TrackPanel extends JPanel {
 		volume = new Potentiometer( 50, "Vol" );
 		volume.setMin( 0 );
 		volume.setMax( 40 );
+		volume.setValue(35 );
 		
 		pan = new Potentiometer( 50, "Pan" );
 		pan.setMin( -20 );
@@ -103,6 +104,14 @@ public class TrackPanel extends JPanel {
 	
 	public boolean getRecordState() {
 		return inCtrl.getRecordState();
+	}
+	
+	public Potentiometer getVolume() {
+		return volume;
+	}
+	
+	public Potentiometer getPan() {
+		return pan;
 	}
 
 }

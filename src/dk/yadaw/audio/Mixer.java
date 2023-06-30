@@ -14,11 +14,13 @@ public class Mixer implements SyncListener {
 	private int masterGainLeft;
 	private int masterGainRight;
 	private long samplePos;
+	private Object outputLock;
 	
-	public Mixer( ) {
+	public Mixer( Object outputLock ) {
 		channels = new ArrayList<MixerChannel>();
 		masterGainLeft = 0x7fff0000;
 		masterGainRight = 0x7fff0000;
+		this.outputLock = outputLock;
 	}
 
 	public void setMaster( AudioStream left, AudioStream right ) {
@@ -76,16 +78,22 @@ public class Mixer implements SyncListener {
 			}
 		}
 		
-		int toTransfer = Math.min( Math.min( minAvailable, sumLeft.free() ), processWish );
-		for( int sample = 0; sample < toTransfer; sample++ ) {
-			int left = 0;
-			int right = 0;
-			for( MixerChannel mc : channels ) {
-				left += ( int )(( ( long )mc.getMasterLeft().read() * masterGainLeft ) >> 32 );
-				right += ( int ) (( ( long )mc.getMasterRight().read() * masterGainRight ) >> 32 );
+		int toTransfer = Math.min(Math.min(minAvailable, sumLeft.free()), processWish);
+		
+		synchronized (outputLock) {
+			for (int sample = 0; sample < toTransfer; sample++) {
+				long left = 0;
+				long right = 0;
+				for (MixerChannel mc : channels) {
+					left += mc.getMasterLeft().read();
+					right += mc.getMasterRight().read();
+				}
+				sumLeft.write((int) ((left * masterGainLeft) >> 32));
+				sumRight.write((int) ((right * masterGainRight) >> 32));
 			}
-			sumLeft.write( left );
-			sumRight.write( right );
+			sumLeft.setWriteTransferCompleted(true);
+			sumRight.setWriteTransferCompleted(true);
+			outputLock.notify();
 		}
 	}
 	

@@ -7,13 +7,14 @@ import java.util.Set;
  * Represents an audio stream.
  */
 public class AudioStream {
-	String label;
-	int[] buffer;
-	long samplePos;
-	int wptr;
-	int rptr;
-	int cptr;
+	private String label;
+	private int[] buffer;
+	private long samplePos;
+	private int wptr;
+	private int rptr;
+	private int cptr;
 	private Set<SyncListener> syncListeners;
+	private boolean writeTransferCompleted;
 	
 	public AudioStream( String label ) {
 		this( 16384 );
@@ -78,6 +79,14 @@ public class AudioStream {
 	
 	public boolean isEmpty() {
 		return rptr == wptr;
+	}
+	
+	public boolean getWriteTransferCompleted() {
+		return writeTransferCompleted;
+	}
+	
+	public void setWriteTransferCompleted( boolean state ) {
+		writeTransferCompleted = state;
 	}
 	
 	public int peak( int nofSamples ) {

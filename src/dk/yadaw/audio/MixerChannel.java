@@ -17,6 +17,9 @@ public class MixerChannel implements SyncListener {
 	private int[] sendGains;
 	private int masterLeftGain;
 	private int masterRightGain;
+	private int masterGain;
+	private int pan;
+	private int maxPan;
 	private long samplePos;
 	private int[] inBuffer;
 
@@ -39,8 +42,10 @@ public class MixerChannel implements SyncListener {
 		this.label = label;
 		masterOutLeft = new AudioStream( label + "out left" );
 		masterOutRight = new AudioStream( label + "out right" );
-		masterLeftGain = 0x7fff0000;
-		masterRightGain = 0x7fff0000;
+		masterGain = 0x7fff0000;	
+		pan = 0;
+		maxPan = 20;
+		setPannedGain();
 	}
 
 	public AudioStream getSend( int num ) {
@@ -71,12 +76,29 @@ public class MixerChannel implements SyncListener {
 		this.in = in;
 	}
 	
-	public void setMasterLeftGain( int gain ) {
-		masterLeftGain = gain;
+	public void setMasterGain( int gain ) {
+		masterGain = gain;
+		setPannedGain();
 	}
 	
-	public void setMasterRightGain( int gain ) {
-		masterRightGain = gain;
+	public void setPan( int value, int max ) {
+		maxPan = Math.abs(max);
+		pan = value;
+		setPannedGain();
+	}
+
+	private void setPannedGain() {
+		if (pan > 0) {
+			masterLeftGain = (int) (((long) masterGain * ( maxPan - pan )) / (maxPan));
+			masterRightGain = masterGain;
+		} else if (pan < 0) {
+			int cpan = Math.abs(pan);
+			masterLeftGain = masterGain;
+			masterRightGain = (int) (((long) masterGain * (maxPan - cpan)) / maxPan);
+		} else {
+			masterRightGain = masterGain;
+			masterLeftGain = masterGain;
+		}
 	}
 	
 	public void setSendGain( int num, int gain ) {
