@@ -61,7 +61,7 @@ public class AudioStream {
 	}
 	
 	public int free() {
-		return buffer.length - (( cptr >= wptr ) ? ( cptr - wptr ) : ( buffer.length - wptr + cptr ));
+		return (( cptr > wptr ) ? ( cptr - wptr ) : ( buffer.length - wptr + cptr )) - 1;
 	}
 	
 	public boolean isFull() {
@@ -113,17 +113,20 @@ public class AudioStream {
 	public void sync( long newSamplePos ) {
 		long releasedSamples = newSamplePos - samplePos;
 		int committedSamples = ( wptr >= cptr ) ? wptr - cptr : buffer.length - cptr + wptr;
-		samplePos = newSamplePos;
+		int commitReadDistance = ( rptr >= cptr ) ? rptr - cptr : buffer.length - cptr + rptr; 
 		
-		if( committedSamples > releasedSamples ) {
-			cptr = ( int )(( cptr + releasedSamples ) % buffer.length );
-		}
-		else {
+		if (committedSamples > releasedSamples) {
+			if (releasedSamples < commitReadDistance) {
+				cptr = (int) ((cptr + releasedSamples) % buffer.length);
+				samplePos = newSamplePos;
+			}
+		} else {
 			cptr = wptr;
+			samplePos = newSamplePos;
 		}
-		
-		for( SyncListener s : syncListeners ) {
-			s.audioSync( newSamplePos );
+
+		for (SyncListener s : syncListeners) {
+			s.audioSync(newSamplePos);
 		}
 	}
 	

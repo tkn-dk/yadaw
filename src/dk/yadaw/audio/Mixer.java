@@ -17,12 +17,13 @@ public class Mixer implements SyncListener {
 	
 	public Mixer( ) {
 		channels = new ArrayList<MixerChannel>();
+		masterGainLeft = 0x7fff0000;
+		masterGainRight = 0x7fff0000;
 	}
 
 	public void setMaster( AudioStream left, AudioStream right ) {
 		sumLeft = left;
 		sumRight = right;
-		sumLeft.addSyncListener(this);
 	}
 	
 	public void setMasterGain( int left, int right ) {
@@ -57,10 +58,8 @@ public class Mixer implements SyncListener {
 	
 	@Override
 	public void audioSync( long newSamplePos ) {
-		
-		for( MixerChannel mch : channels ) {
-			mch.audioSync( samplePos );
-		}
+		sumLeft.sync(newSamplePos);
+		sumRight.sync(newSamplePos);
 		
 		int deltaPos = ( int )( newSamplePos - samplePos );
 		samplePos = newSamplePos;
@@ -70,9 +69,6 @@ public class Mixer implements SyncListener {
 		// We need to find the channel with least amount of samples to process
 		// as mixer channels can be fed from a file or ASIO input
 		for( MixerChannel est : channels ) {
-			// Enough to sync on master left, as the mixechannel is only listening on that.
-			est.getMasterLeft().sync( newSamplePos );
-			
 			// Enough to only check one of the master channels as they are fed from same input
 			int available = est.getMasterLeft().available();
 			if( available < minAvailable ) {
@@ -81,12 +77,6 @@ public class Mixer implements SyncListener {
 		}
 		
 		int toTransfer = Math.min( Math.min( minAvailable, sumLeft.free() ), processWish );
-		if (toTransfer == 0) {
-			System.out.println("Mixer Master no data:");
-			System.out.println("  toTransfer: " + toTransfer + ", minAvailable: " + minAvailable + ", sumLeft.free(): "
-					+ sumLeft.free() + ", minAvailable: " + minAvailable + ", processWish: " + processWish);
-		}
-		
 		for( int sample = 0; sample < toTransfer; sample++ ) {
 			int left = 0;
 			int right = 0;

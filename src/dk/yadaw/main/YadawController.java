@@ -10,6 +10,7 @@ import dk.yadaw.audio.AsioException;
 import dk.yadaw.audio.AudioStream;
 import dk.yadaw.audio.Mixer;
 import dk.yadaw.audio.MixerChannel;
+import dk.yadaw.audio.SyncListener;
 import dk.yadaw.datamodel.DataEvent;
 import dk.yadaw.datamodel.DataItemID;
 import dk.yadaw.datamodel.DataModelInstance;
@@ -22,11 +23,12 @@ import dk.yadaw.widgets.TrackPanel;
  * @author tkn
  *
  */
-public class YadawController implements DataModelUpdateListenerIf {
-	YadawDataModel yaModel;
-	YadawFrame yaFrame;
-	Thread soundThread;
-	Asio asio;
+public class YadawController implements DataModelUpdateListenerIf, SyncListener {
+	private YadawDataModel yaModel;
+	private YadawFrame yaFrame;
+	private Thread soundThread;
+	private Asio asio;
+	private Mixer mixer;
 	Collection<TrackController> trackControllers;
 	
 	public YadawController() {
@@ -55,7 +57,8 @@ public class YadawController implements DataModelUpdateListenerIf {
 	}
 	
 	private void setupMixer() {
-		Mixer mixer = new Mixer();
+		mixer = new Mixer();
+		yaModel.setMixer(mixer);
 		mixer.setMaster( new AudioStream( "master L"), new AudioStream( "master R"));
 		
 		if( asio.connectInput(0, mixer.getMasterLeft()) ) {
@@ -72,7 +75,6 @@ public class YadawController implements DataModelUpdateListenerIf {
 			return;
 		}
 		
-		yaModel.setMixer(mixer);
 		yaFrame.newConsolidatedPanel();
 		
 		for( int ch = 0; ch < 2; ch++ ) {
@@ -97,6 +99,8 @@ public class YadawController implements DataModelUpdateListenerIf {
 			e.printStackTrace();
 		}
 		*/
+		asio.setSyncListener(this);
+		
 		soundThread.start();
 	}
 
@@ -144,6 +148,14 @@ public class YadawController implements DataModelUpdateListenerIf {
 			}
 
 		}
+	}
+
+	@Override
+	public void audioSync(long samplePos) {
+		for( TrackController tc : trackControllers ) {
+			tc.audioSync(samplePos);
+		}
+		mixer.audioSync(samplePos);
 	}
 	
 }

@@ -25,6 +25,7 @@ public class TrackController implements SyncListener {
 	private AudioStream mixerSplit;
 	private String trackFileName;
 	private boolean isRecording;
+	private long lastPeakPos;
 	
 	public TrackController( String trackFileName, MixerChannel channel, TrackPanel panel ) {
 		mixerChannel = channel;
@@ -54,7 +55,7 @@ public class TrackController implements SyncListener {
 			audioTrack.setInput( null );
 			audioTrack.setOutput( inStream );
 			try {
-				audioTrack.playbackStart(trackFileName + ".raw" );
+				audioTrack.playbackStart(trackFileName + ".raw", false );
 			} catch (IOException e) {
 				System.out.println( "Could not playback from " + trackFileName );
 			}
@@ -83,18 +84,8 @@ public class TrackController implements SyncListener {
 
 	@Override
 	public void audioSync(long newSamplePos) {
-		System.out.println( "TrackController sync " + newSamplePos );
 		int deltaPos = ( int )( newSamplePos - samplePos );
 		samplePos = newSamplePos;
-		
-		VUMeter vuIn = trackPanel.getInVUMeter();
-		int peakLvl = inStream.peak( deltaPos );
-		double vuLevel = vuIn.getMin();
-		if( peakLvl > 0 ) {
-			vuLevel = 20 * Math.log( peakLvl / 0xffffff00 ) + vuIn.getMax();
-		}
-		vuIn.setVal( ( int )vuLevel );
-		
 		if( isRecording ) {
 			for( int n = 0; n < deltaPos; n++ ) {
 				int sample = inStream.read();
@@ -106,7 +97,25 @@ public class TrackController implements SyncListener {
 			mixerSplit.sync( newSamplePos );
 		}
 		else {
-			
+			inStream.sync(newSamplePos);
+			audioTrack.audioSync(newSamplePos);
+			mixerChannel.audioSync(newSamplePos);
 		}
+		
+		// VU meter update
+		int deltaPeakPos = ( int )(newSamplePos - lastPeakPos);
+		if( deltaPeakPos > 2400 ) {
+			VUMeter vuIn = trackPanel.getInVUMeter();
+			double peakLvl = inStream.peak( deltaPeakPos );
+			double vuLevel = vuIn.getMin();
+			double logArg = peakLvl / 0x7fffff00;
+			if (logArg > 0.001) {
+				vuLevel = 20 * Math.log(logArg) + vuIn.getMax();
+			}
+			vuIn.setVal((int) vuLevel);
+			lastPeakPos = newSamplePos;
+		}
+		
+		
 	}
 }

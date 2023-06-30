@@ -6,6 +6,8 @@ import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 
+import javax.swing.SwingUtilities;
+
 import dk.yadaw.utils.PeakTimer;
 
 public class VUMeter extends Component {
@@ -27,7 +29,7 @@ public class VUMeter extends Component {
 		this.label = label;
 		vumHeight = height - 2;
 		max = 12;
-		min = -40;
+		min = -80;
 		zero = 0;
 		newVal = min;
 		peakVal = min;
@@ -85,14 +87,15 @@ public class VUMeter extends Component {
 	}
 		
 	public void setVal( int val ) {
+		
+		SwingUtilities.invokeLater( () -> {
 		newVal = val;
-		int height = getHeight();
-		System.out.println( "val: " + val + "  pxlVal: " + valToPixel( height, val ));
 		if( val >= peakVal ) {
 			peakVal = val;
 			peakTimer.setTimer( 1000 );
 		}
 		repaint();
+		});
 	}
 	
 	public int getVal() {

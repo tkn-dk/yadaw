@@ -3,9 +3,18 @@ package dk.yadaw.audio;
 import java.io.IOException;
 import java.util.Collection;
 
-public class YadawCmd {
+public class YadawCmd implements SyncListener {
 	private Asio asio; 
 	private Thread asioThread;
+	private AudioStream rstream;
+	private AudioStream pLeftStream;
+	private AudioStream pRightStream;
+	private AudioStream pTrackStream;
+	private AudioTrack track;	
+
+	private int[] delayBuffer;
+	int drp;
+	int dwp;
 	
 	public YadawCmd() {
 		asio = new Asio();
@@ -28,8 +37,8 @@ public class YadawCmd {
 	}
 	
 	public void record( String fileName, int channel ) {
-		AudioTrack track = new AudioTrack();
-		AudioStream rstream = new AudioStream();
+		track = new AudioTrack();
+		rstream = new AudioStream();
 		asio.connectOutput( channel, rstream);
 		track.setInput(rstream);
 		
@@ -60,16 +69,25 @@ public class YadawCmd {
 	}
 	
 	public void play( String fileName, int channel ) {
-		AudioTrack track = new AudioTrack();
-		AudioStream pStream = new AudioStream();
-		asio.connectInput(channel, pStream);
-		track.setOutput( pStream );
+		track = new AudioTrack();
+		pLeftStream = new AudioStream();
+		pRightStream = new AudioStream();
+		pTrackStream = new AudioStream();
+		
+		asio.connectInput(0, pLeftStream);
+		asio.connectInput(1, pRightStream);
+		track.setOutput( pTrackStream );
 		
 		try {
-			track.playbackStart(fileName);
+			track.playbackStart(fileName, true);
 		} catch (IOException e) {
 			System.out.println( "Could not open trackfile: " + fileName );
 		}
+		
+		delayBuffer = new int[24000];
+		dwp = 4800;
+		drp = 0;
+		transferStreams();
 		
 		startSound();
 		try {
@@ -84,6 +102,7 @@ public class YadawCmd {
 	}
 	
 	public void startSound() {
+		asio.setSyncListener(this);
 		asioThread = new Thread() {
 
 			@Override
@@ -138,6 +157,37 @@ public class YadawCmd {
 		}
 		else {
 			System.out.println( "  usage: YadawCmd <\"asio driver name\"> <record | play> <channel> <file>" );
+		}
+	}
+
+	private void transferStreams() {
+		while( pTrackStream.available() > 0 ) {
+			int inSample = pTrackStream.read() << 1;
+			delayBuffer[dwp] = inSample + ( int )(((long)delayBuffer[drp] * 0x6fff000 ) >> 32 );
+			dwp++;
+			if( dwp == delayBuffer.length )
+				dwp = 0;
+			int dSample = delayBuffer[drp++];
+			if( drp == delayBuffer.length )
+				drp = 0;
+			
+			pLeftStream.write( ( int )( ((long)dSample * 0x7fff0000 ) >> 32 ));
+			pRightStream.write( inSample );
+		}
+	}
+	
+	@Override
+	public void audioSync(long samplePos) {
+		if( pTrackStream != null ) {
+			transferStreams();
+			pTrackStream.sync(samplePos);
+			pLeftStream.sync(samplePos);
+			pRightStream.sync(samplePos);
+			track.audioSync(samplePos);		
+		}
+		else if( rstream != null ) {
+			rstream.sync(samplePos);
+			track.audioSync(samplePos);
 		}
 	}
 }
