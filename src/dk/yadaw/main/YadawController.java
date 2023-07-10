@@ -1,5 +1,6 @@
 package dk.yadaw.main;
 
+import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Collection;
 
@@ -77,11 +78,12 @@ public class YadawController implements DataModelUpdateListenerIf, SyncListener 
 		
 		yaFrame.newConsolidatedPanel();
 		
+		Color[] trackColors = new Color[] { Color.RED, Color.GREEN, Color.ORANGE, Color.YELLOW };
 		for( int ch = 0; ch < 4; ch++ ) {
 			String label = "IN" + (ch+1);
 			MixerChannel mxc = new MixerChannel( label, ch, yaModel.getNumSends());
 			mixer.addChannel( mxc );
-			TrackPanel tp =  new TrackPanel( label );
+			TrackPanel tp =  new TrackPanel( label, trackColors[ch] );
 			trackControllers.add( new TrackController( label, mxc, tp ));
 			yaFrame.addConsolidatedPanel(tp);
 		}

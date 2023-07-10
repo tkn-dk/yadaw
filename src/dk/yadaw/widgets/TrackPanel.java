@@ -3,6 +3,7 @@ package dk.yadaw.widgets;
 import java.awt.FlowLayout;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 
@@ -23,7 +24,7 @@ public class TrackPanel extends JPanel {
 	private Collection<Component> panelComponents;
 	private String label;
 	
-	public TrackPanel( String label ) {
+	public TrackPanel( String label, Color trackColor ) {
 		this.label = label;
 		panelComponents = new ArrayList<Component>();
 		volume = new Potentiometer( 50, "Vol" );
@@ -49,7 +50,7 @@ public class TrackPanel extends JPanel {
 		
 		inCtrl = new InputControls( 40, 60, label );
 		
-		trackView = new TrackView( 60 );
+		trackView = new TrackView( 60, trackColor );
 		
 		setLayout( new FlowLayout() );
 				
@@ -112,6 +113,10 @@ public class TrackPanel extends JPanel {
 	
 	public Potentiometer getPan() {
 		return pan;
+	}
+	
+	public TrackView getTrackView() {
+		return trackView;
 	}
 
 }

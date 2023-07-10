@@ -108,10 +108,12 @@ public class TrackController implements SyncListener, PotentiometerListener {
 		
 		// VU meter update
 		int deltaPeakPos = ( int )(newSamplePos - lastPeakPos);
-		if( deltaPeakPos > 2880 ) {
+		if( deltaPeakPos > 2400 ) {
 			vuUpdate( inStream, trackPanel.getInVUMeter(), deltaPeakPos );
 			vuUpdate( mixerChannel.getMasterLeft(), trackPanel.getOutLeftVUMeter(), deltaPeakPos );
 			vuUpdate( mixerChannel.getMasterRight(), trackPanel.getOutRightVUMeter(), deltaPeakPos );
+			
+			trackPanel.getTrackView().setSamplePos(newSamplePos);
 			lastPeakPos = newSamplePos;
 		}
 		
@@ -127,7 +129,7 @@ public class TrackController implements SyncListener, PotentiometerListener {
 		}
 		vum.setVal((int) vuLevel);		
 	}
-
+	
 	@Override
 	public void potentiometerUpdate(Potentiometer pot) {
 		int value = pot.getValue();

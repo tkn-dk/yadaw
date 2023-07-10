@@ -24,8 +24,8 @@ public class VUMeter extends Component {
 	private final Color overColor = new Color( 200, 0, 0 );
 
 	private PeakTimer peakTimer;
-	
-	public VUMeter( int width, int height, String label ) {
+
+	public VUMeter(int width, int height, String label) {
 		this.label = label;
 		vumHeight = height - 2;
 		max = 12;
@@ -33,18 +33,18 @@ public class VUMeter extends Component {
 		zero = 0;
 		newVal = min;
 		peakVal = min;
-		
-		Dimension dim = new Dimension( width, height );
-		setPreferredSize( dim );
-		
+
+		Dimension dim = new Dimension(width, height);
+		setPreferredSize(dim);
+
 		peakTimer = new PeakTimer() {
 			public void timerEvent() {
 				peakVal = min;
-				repaint();
+				SwingUtilities.invokeLater(() -> repaint());
 			}
 		};
-		
-		peakTimer.setTimer( 1000 );
+
+		peakTimer.setTimer(1000);
 	}
 	
 	@Override
@@ -86,15 +86,15 @@ public class VUMeter extends Component {
 		super.paint(g);
 	}
 		
-	public void setVal( int val ) {
-		
-		SwingUtilities.invokeLater( () -> {
-		newVal = val;
-		if( val >= peakVal ) {
-			peakVal = val;
-			peakTimer.setTimer( 1000 );
-		}
-		repaint();
+	public void setVal(int val) {
+
+		SwingUtilities.invokeLater(() -> {
+			newVal = val;
+			if (val >= peakVal) {
+				peakVal = val;
+				peakTimer.setTimer(1000);
+			}
+			repaint();
 		});
 	}
 	

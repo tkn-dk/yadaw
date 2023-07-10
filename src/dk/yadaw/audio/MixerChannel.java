@@ -92,9 +92,8 @@ public class MixerChannel implements SyncListener {
 			masterLeftGain = (int) (((long) masterGain * ( maxPan - pan )) / (maxPan));
 			masterRightGain = masterGain;
 		} else if (pan < 0) {
-			int cpan = Math.abs(pan);
 			masterLeftGain = masterGain;
-			masterRightGain = (int) (((long) masterGain * (maxPan - cpan)) / maxPan);
+			masterRightGain = (int) (((long) masterGain * (maxPan + pan)) / maxPan);
 		} else {
 			masterRightGain = masterGain;
 			masterLeftGain = masterGain;
