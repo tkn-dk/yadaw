@@ -144,12 +144,10 @@ public class TrackController implements SyncListener, PotentiometerListener {
 		int value = pot.getValue();
 		switch (pot.getLabel()) {
 		case "Vol":
-			System.out.println(mixerChannel.getLabel() + "Volume update " + pot.getLabel() + " to " + value);
 			mixerChannel.setMasterGain((0x7fff0000 / pot.getMax()) * value);
 			break;
 
 		case "Pan":
-			System.out.println(mixerChannel.getLabel() + "Volume update " + pot.getLabel() + " to " + value);
 			mixerChannel.setPan(value, pot.getMax());
 			break;
 
