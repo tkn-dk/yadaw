@@ -124,7 +124,7 @@ public class Potentiometer extends java.awt.Component implements MouseWheelListe
 
     @Override
 	public void mouseWheelMoved(MouseWheelEvent e) {
-		value += e.getWheelRotation();
+		value -= e.getWheelRotation();
 		if( value < min ) {
 			value = min;
 		}

@@ -160,15 +160,15 @@ public class MixerChannel implements SyncListener {
 	
 	private void routeSend( int send, int toProcess ) {
 		for( int n = 0; n < toProcess; n++ ) {
-			int sample = ( int )( (( long )inBuffer[n] * sendGains[send] ) >> 32 );
+			int sample = ( int )( (( long )inBuffer[n] * sendGains[send] ) >> 31 );
 			sends[send].write( sample );
 		}
 	}
 	
 	private void routeMasters( int toTransfer ) {
 		for( int n = 0; n < toTransfer; n++ ) {
-			int leftSample =  ( int )( (( long )inBuffer[n] * masterLeftGain ) >> 32 );
-			int rightSample = ( int )( (( long )inBuffer[n] * masterRightGain ) >> 32 );
+			int leftSample =  ( int )( (( long )inBuffer[n] * masterLeftGain ) >> 31 );
+			int rightSample = ( int )( (( long )inBuffer[n] * masterRightGain ) >> 31 );
 			masterOutLeft.write( leftSample );
 			masterOutRight.write( rightSample );
 		}		
