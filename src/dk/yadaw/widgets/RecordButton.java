@@ -3,50 +3,39 @@ package dk.yadaw.widgets;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
-import java.awt.geom.Rectangle2D;
 
-public class InputControls extends Component implements MouseListener {
+
+public class RecordButton extends Component implements MouseListener {
 	private static final long serialVersionUID = 1L;
 	private boolean record;
-	private String label;
-    private final Font font = new Font( "arial", Font.PLAIN, 12);
-    private int height;
-    private int width;
 
-	public InputControls( int width, int height, String label ) {
-		this.height = height;
-		this.width = width;
-		this.label = label;
-		Dimension dim = new Dimension( width, height );
-		setPreferredSize( dim );
+	public RecordButton() {
 		addMouseListener( this );
+		Dimension dim = new Dimension( 40, 20 );
+		setPreferredSize( dim );
 	}
 
 	@Override
 	public void paint(Graphics g) {
 		Graphics2D g2d = ( Graphics2D )g;
-		Rectangle2D strBounds = g2d.getFontMetrics().getStringBounds( label, g2d );
-		g2d.setColor( Color.BLACK );
-		g2d.setFont( font );
-		g2d.drawRect( 0, 0,  width - 1, height / 2 - 2  );
-		g2d.drawString( label, ( float )( width - strBounds.getWidth() )/2, ( float )(( height - strBounds.getHeight())/2) - 5 );
-
-		g2d.drawRect( 0,  height / 2 + 2, width - 1 , height / 2 - 4 );
+		int w = getWidth();
+		int h = getHeight();
+		
+		g2d.drawRect( 0,  0, w - 1 , h - 1 );
 		if( record ) {
 			g2d.setColor( Color.red );
-			g2d.fillRect( 1,  height/2 + 3,  width-2,  height / 2 - 5 );
+			g2d.fillRect( 1,  1,  w - 2,  h - 2 );
 		}
 		else {
 			g2d.setColor( g2d.getBackground() );
-			g2d.fillRect( 1,  height/2 + 3,  width-2,  height / 2 - 5 );
+			g2d.fillRect( 1,  1, w - 2, h - 2 );
 		}
 		g2d.setColor( Color.black );
-		g2d.fillOval( width/2 - 8, 3 * height / 4 - 8, 16, 16 );
+		g2d.fillOval( w/2 - 6, h/2 - 6, 12, 12 );
 		
 		super.paint(g);
 	}

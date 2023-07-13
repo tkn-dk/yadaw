@@ -1,5 +1,6 @@
 package dk.yadaw.datamodel;
 
+import java.awt.Font;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Vector;
@@ -18,6 +19,7 @@ public class YadawDataModel {
 	private String asioDriverName;
 	private Collection<DataListenerItem> dataListeners;
 	private Mixer mixer;
+	private Font mixerFont;
 	private Thread dataUpdateThread;
 	private LinkedList<DataEvent>eventQueue;
 	
@@ -26,6 +28,8 @@ public class YadawDataModel {
 	 * Constructs data model object.
 	 */
 	public YadawDataModel() {
+		mixerFont = new Font( "Ariel", Font.BOLD, 10 );
+		
 		eventQueue = new LinkedList<DataEvent>();
 		dataUpdateThread = new Thread() {
 
@@ -112,6 +116,14 @@ public class YadawDataModel {
 	 */
 	public int getNumSends() {
 		return numSends;
+	}
+	
+	/**
+	 * Return font used for labels etc in the mixer window.
+	 * @return Mixer label font.
+	 */
+	public Font getMixerFont() {
+		return mixerFont;
 	}
 	
 	public void addUpdateListener( DataItemID id, DataModelUpdateListenerIf listener ) {

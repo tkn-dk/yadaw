@@ -1,6 +1,7 @@
 package dk.yadaw.widgets;
 
 import java.awt.FlowLayout;
+import java.awt.Font;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.awt.Color;
@@ -19,12 +20,12 @@ public class TrackPanel extends JPanel {
 	private VUMeter vuIn;
 	private VUMeter vuOutLeft;
 	private VUMeter vuOutRight;
-	private InputControls inCtrl;
+	private InputPanel inPanel;
 	private TrackView trackView;
 	private Collection<Component> panelComponents;
 	private String label;
 	
-	public TrackPanel( String label, Color trackColor ) {
+	public TrackPanel( String label, Color trackColor, int inputChannel, Font font ) {
 		this.label = label;
 		panelComponents = new ArrayList<Component>();
 		volume = new Potentiometer( 50, "Vol" );
@@ -48,13 +49,13 @@ public class TrackPanel extends JPanel {
 		vuOutLeft = new VUMeter( 8, 60, "L" );
 		vuOutRight = new VUMeter( 8, 60, "R" );
 		
-		inCtrl = new InputControls( 40, 60, label );
+		inPanel = new InputPanel(label, trackColor, font, inputChannel );
 		
 		trackView = new TrackView( 60, trackColor );
 		
 		setLayout( new FlowLayout() );
 				
-		panelComponents.add( inCtrl );
+		panelComponents.add( inPanel );
 		panelComponents.add( vuIn );
 		panelComponents.add( trackView );
 		panelComponents.add( send1 );
@@ -104,7 +105,7 @@ public class TrackPanel extends JPanel {
 	}
 	
 	public boolean getRecordState() {
-		return inCtrl.getRecordState();
+		return inPanel.getRecordButton().getRecordState();
 	}
 	
 	public Potentiometer getVolume() {
