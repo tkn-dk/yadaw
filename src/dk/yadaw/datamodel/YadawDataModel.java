@@ -1,12 +1,16 @@
 package dk.yadaw.datamodel;
 
 import java.awt.Font;
+import java.awt.event.MouseEvent;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Vector;
 
 import dk.yadaw.audio.Asio;
 import dk.yadaw.audio.Mixer;
+import dk.yadaw.main.TrackController;
+import dk.yadaw.widgets.InputLabel;
 
 /**
  * Holds all data model objects.
@@ -22,7 +26,8 @@ public class YadawDataModel {
 	private Font mixerFont;
 	private Thread dataUpdateThread;
 	private LinkedList<DataEvent>eventQueue;
-	
+	private Collection<TrackController> trackControllers;
+
 		
 	/**
 	 * Constructs data model object.
@@ -35,6 +40,7 @@ public class YadawDataModel {
 
 			@Override
 			public void run() {
+				trackControllers = new ArrayList<TrackController>();
 				boolean active = true;
 				setAsio( new Asio());
 				synchronized( this ) {
@@ -124,6 +130,24 @@ public class YadawDataModel {
 	 */
 	public Font getMixerFont() {
 		return mixerFont;
+	}
+	
+	public Collection<TrackController> getTrackControllers() {
+		return trackControllers;
+	}
+	
+	public void mixerMouseClick( MouseEvent e, Object panelObject ) {
+		Class<?> classObj = panelObject.getClass();
+		System.out.println( "DataModel mixerMouseClick Type:  " + classObj.getName());
+		if( panelObject instanceof InputLabel ) {
+			InputLabel ilbl =(InputLabel)panelObject;
+			for( TrackController c : trackControllers ) {
+				if( ilbl == c.getPanel().getInputPanel().getInputLabel() ) {
+					System.out.println( "Track panel " + c.getTrackName() + " InputLabel clicked");
+					c.inputLabelClick();
+				}
+			}
+		}
 	}
 	
 	public void addUpdateListener( DataItemID id, DataModelUpdateListenerIf listener ) {

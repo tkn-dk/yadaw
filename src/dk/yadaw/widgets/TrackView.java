@@ -46,6 +46,15 @@ public class TrackView extends Component {
 		}
 	}
 
+	public Color getTrackColor() {
+		return trackColor;
+	}
+	
+	public void setTrackColor( Color newColor ) {
+		trackColor = newColor;
+		repaint();
+	}
+	
 	@Override
 	public void paint(Graphics g) {
 		super.paint(g);

@@ -5,6 +5,7 @@ import java.awt.Font;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
 import dk.yadaw.audio.Asio;
@@ -37,7 +38,7 @@ public class YadawController implements DataModelUpdateListenerIf, SyncListener 
 		yaModel = DataModelInstance.getModelInstance();
 		yaModel.addUpdateListener( DataItemID.YADAW_ALL, this );
 		asio = yaModel.getAsio();
-		trackControllers = new ArrayList<TrackController>();
+		trackControllers = yaModel.getTrackControllers();
 		SwingUtilities.invokeLater( new Runnable() {
 
 			@Override
@@ -85,7 +86,7 @@ public class YadawController implements DataModelUpdateListenerIf, SyncListener 
 			MixerChannel mxc = new MixerChannel( label, ch, yaModel.getNumSends());
 			mixer.addChannel( mxc );
 			TrackPanel tp =  new TrackPanel( label, trackColors[ch], ch + 1, yaModel.getMixerFont());
-			trackControllers.add( new TrackController( label, mxc, tp ));
+			trackControllers.add( new TrackController( yaFrame, label, mxc, tp ));
 			yaFrame.addConsolidatedPanel(tp);
 		}
 		

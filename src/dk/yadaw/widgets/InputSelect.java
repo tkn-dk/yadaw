@@ -32,7 +32,6 @@ public class InputSelect extends Component {
 		int tw = g2.getFontMetrics().stringWidth(chString);
 		int y = (height - g2.getFontMetrics().getHeight() / 2);
 		int x = (width -  tw) / 2;
-		System.out.println( "InputSelect x:" + x + " y:" + y + " tw:" + tw + " width:" + width );
 		g2.drawString(chString, x, y);
 	}
 

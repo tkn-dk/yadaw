@@ -18,12 +18,11 @@ import dk.yadaw.datamodel.DataModelInstance;
 import dk.yadaw.datamodel.YadawDataModel;
 
 public class SelectAsioDlg {
-	private String asioDriverName;
 	private CenteredDialog dlg;
 	private YadawDataModel dmodel;
 	
-	public SelectAsioDlg( JFrame frame ) {
-		dmodel = DataModelInstance.getModelInstance();
+	public SelectAsioDlg( JFrame frame, YadawDataModel model ) {
+		dmodel = model;
 		dlg = new CenteredDialog( frame, "Select ASIO driver");
 		dlg.setLayout( new FlowLayout() );
 		JLabel label = new JLabel( "Detected ASIO drivers: ");

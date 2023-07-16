@@ -50,12 +50,23 @@ public class InputPanel extends JPanel {
 		add( inputSelect, gbc );
 	}
 	
-	public String getLabel() {
+	public String getTrackName() {
 		return label;
+	}
+	
+	public void setTrackName( String newName ) {
+		label = newName;
+		inputLabel.setLabel(newName);
 	}
 	
 	public Color getTrackColor() {
 		return trackColor;
+	}
+	
+	public void setTrackColor( Color newColor ) {
+		trackColor = newColor;
+		inputLabel.setLabelColor(newColor);
+		
 	}
 	
 	public int getInputChannel() {

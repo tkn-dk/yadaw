@@ -6,20 +6,28 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 
-public class InputLabel extends Component {
+import dk.yadaw.datamodel.DataModelInstance;
+import dk.yadaw.datamodel.YadawDataModel;
+
+public class InputLabel extends Component implements MouseListener {
 	private static final long serialVersionUID = 1L;
 	private String label;
 	private Color labelColor;
 	private Font labelFont;
+	private YadawDataModel yaModel;
 
 	public InputLabel(String label, Color color, Font font) {
 		this.label = label;
 		labelColor = color;
 		labelFont = font;
+		yaModel = DataModelInstance.getModelInstance();
 		
 		Dimension dim = new Dimension( 100, 20 );
 		setPreferredSize( dim );
+		addMouseListener( this );
 	}
 	
 	public String getLabel() {
@@ -36,6 +44,28 @@ public class InputLabel extends Component {
 	
 	public void setLabelColor( Color labelColor ) {
 		this.labelColor = labelColor;
+		repaint();
+	}
+	
+	@Override
+	public void mouseClicked(MouseEvent e) {
+		yaModel.mixerMouseClick(e, this);
+	}
+
+	@Override
+	public void mousePressed(MouseEvent e) {
+	}
+
+	@Override
+	public void mouseReleased(MouseEvent e) {
+	}
+
+	@Override
+	public void mouseEntered(MouseEvent e) {
+	}
+
+	@Override
+	public void mouseExited(MouseEvent e) {
 	}
 	
 	@Override

@@ -16,6 +16,7 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.SwingUtilities;
 
+import dk.yadaw.datamodel.DataModelInstance;
 import dk.yadaw.widgets.SelectAsioDlg;
 import dk.yadaw.widgets.TrackPanel;
 import dk.yadaw.widgets.ViewAudioParmsDlg;
@@ -53,14 +54,14 @@ public class YadawFrame extends JFrame {
 		menuBar.add( fileMenu );
 		
 		// Audio menu
-		JFrame listener = this;
+		JFrame thisFrame = this;
 		JMenu audioMenu = new JMenu( "Audio" );
 		JMenuItem audioSelectInterface = new JMenuItem( "Open Interface");
 		audioSelectInterface.addActionListener( new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				System.out.println( "Open asio dialog");
-				SelectAsioDlg dlg = new SelectAsioDlg( listener );
+				SelectAsioDlg dlg = new SelectAsioDlg( thisFrame, DataModelInstance.getModelInstance() );
 			}
 		});
 		
@@ -69,7 +70,7 @@ public class YadawFrame extends JFrame {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				System.out.println( "Audio settings action " );
-				ViewAudioParmsDlg dlg = new ViewAudioParmsDlg( listener );
+				ViewAudioParmsDlg dlg = new ViewAudioParmsDlg( thisFrame );
 			}
 		});
 		
@@ -121,7 +122,7 @@ public class YadawFrame extends JFrame {
 	
 	public void deletePanel( String label ) {
 		for( TrackPanel tp : trackPanels ) {
-			if( tp.getLabel().equals(label)) {
+			if( tp.getTrackName().equals(label)) {
 				trackPanels.remove(tp);
 				break;
 			}

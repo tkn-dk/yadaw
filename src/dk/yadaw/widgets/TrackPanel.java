@@ -23,101 +23,118 @@ public class TrackPanel extends JPanel {
 	private InputPanel inPanel;
 	private TrackView trackView;
 	private Collection<Component> panelComponents;
-	private String label;
-	
-	public TrackPanel( String label, Color trackColor, int inputChannel, Font font ) {
-		this.label = label;
+	private String trackName;
+	private Color trackColor;
+
+	public TrackPanel(String trackName, Color trackColor, int inputChannel, Font font) {
+		this.trackName = trackName;
+		this.trackColor = trackColor;
 		panelComponents = new ArrayList<Component>();
-		volume = new Potentiometer( 50, "Vol" );
-		volume.setMin( 0 );
-		volume.setMax( 40 );
-		volume.setValue(35 );
-		
-		pan = new Potentiometer( 50, "Pan" );
-		pan.setMin( -20 );
-		pan.setMax( 20 );
-		
-		send1 = new Potentiometer( 50, "Send 1" );
-		send1.setMin( 0 );
-		send1.setMax( 40 );
-		
-		send2 = new Potentiometer( 50, "Send 2");
-		send2.setMin( 0 );
-		send2.setMax( 40 );
-		
-		vuIn = new VUMeter( 12, 60, "In" );
-		vuOutLeft = new VUMeter( 8, 60, "L" );
-		vuOutRight = new VUMeter( 8, 60, "R" );
-		
-		inPanel = new InputPanel(label, trackColor, font, inputChannel );
-		
-		trackView = new TrackView( 60, trackColor );
-		
-		setLayout( new FlowLayout() );
-				
-		panelComponents.add( inPanel );
-		panelComponents.add( vuIn );
-		panelComponents.add( trackView );
-		panelComponents.add( send1 );
-		panelComponents.add( send2 );
-		panelComponents.add( pan );
-		panelComponents.add( volume );
-		panelComponents.add( vuOutLeft );
-		panelComponents.add( vuOutRight );
-		
-		for( Component c : panelComponents ) {
-			add( c );
+		volume = new Potentiometer(50, "Vol");
+		volume.setMin(0);
+		volume.setMax(40);
+		volume.setValue(35);
+
+		pan = new Potentiometer(50, "Pan");
+		pan.setMin(-20);
+		pan.setMax(20);
+
+		send1 = new Potentiometer(50, "Send 1");
+		send1.setMin(0);
+		send1.setMax(40);
+
+		send2 = new Potentiometer(50, "Send 2");
+		send2.setMin(0);
+		send2.setMax(40);
+
+		vuIn = new VUMeter(12, 60, "In");
+		vuOutLeft = new VUMeter(8, 60, "L");
+		vuOutRight = new VUMeter(8, 60, "R");
+
+		inPanel = new InputPanel(trackName, trackColor, font, inputChannel);
+
+		trackView = new TrackView(60, trackColor);
+
+		setLayout(new FlowLayout());
+
+		panelComponents.add(inPanel);
+		panelComponents.add(vuIn);
+		panelComponents.add(trackView);
+		panelComponents.add(send1);
+		panelComponents.add(send2);
+		panelComponents.add(pan);
+		panelComponents.add(volume);
+		panelComponents.add(vuOutLeft);
+		panelComponents.add(vuOutRight);
+
+		for (Component c : panelComponents) {
+			add(c);
 		}
-		
+
 	}
-	
+
 	public void resizeTrackView() {
 		int pWidth = getWidth();
 		int tvWidth = pWidth - 70;
-		for( Component c : panelComponents ) {
-			if( c != trackView ) {
+		for (Component c : panelComponents) {
+			if (c != trackView) {
 				tvWidth -= c.getWidth();
 			}
 		}
 		int tvHeight = trackView.getHeight();
-		Dimension newDim = new Dimension( tvWidth, tvHeight );
-		trackView.setPreferredSize( newDim );
+		Dimension newDim = new Dimension(tvWidth, tvHeight);
+		trackView.setPreferredSize(newDim);
 	}
-	
-	public void setLabel( String label ) {
-		this.label = label;
+
+	public void setTrackName(String name) {
+		this.trackName = name;
+		inPanel.setTrackName( name );
 	}
-	
-	public String getLabel() {
-		return this.label;
+
+	public String getTrackName() {
+		return this.trackName;
 	}
-	
+
 	public VUMeter getInVUMeter() {
 		return vuIn;
 	}
-	
+
 	public VUMeter getOutLeftVUMeter() {
 		return vuOutLeft;
 	}
-	
+
 	public VUMeter getOutRightVUMeter() {
 		return vuOutRight;
 	}
-	
+
 	public boolean getRecordState() {
 		return inPanel.getRecordButton().getRecordState();
 	}
-	
+
 	public Potentiometer getVolume() {
 		return volume;
 	}
-	
+
 	public Potentiometer getPan() {
 		return pan;
 	}
-	
+
 	public TrackView getTrackView() {
 		return trackView;
+	}
+
+	public InputPanel getInputPanel() {
+		return inPanel;
+	}
+
+	public Color getTrackColor() {
+		return trackColor;
+	}
+
+	public void setTrackColor(Color newColor) {
+		trackColor = newColor;
+		inPanel.setTrackColor(newColor);
+		trackView.setTrackColor(newColor);
 	}
 
 }
