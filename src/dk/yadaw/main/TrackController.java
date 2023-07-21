@@ -57,7 +57,9 @@ public class TrackController implements SyncListener, PotentiometerListener, Tra
 		tView.setViewWindow(0, viewEndPos);
 		long nofSamples = trackViewData.getNofSamples();
 		int[] trackPeaks = trackViewData.getPeakArray(0, nofSamples, viewEndPos / 800);
-		tView.setTrackPeaks(0, nofSamples, trackPeaks);
+		if (trackPeaks != null) {
+			tView.setTrackPeaks(0, nofSamples, trackPeaks);
+		}
 	}
 
 	public void setPlaybackOrRecord(Asio asio) {
@@ -113,9 +115,9 @@ public class TrackController implements SyncListener, PotentiometerListener, Tra
 	}
 
 	public void inputLabelClick() {
-		TrackNameColorDlg tncDlg = new TrackNameColorDlg(owner, trackName, trackPanel.getTrackColor(), this );
+		TrackNameColorDlg tncDlg = new TrackNameColorDlg(owner, trackName, trackPanel.getTrackColor(), this);
 	}
-	
+
 	@Override
 	public void audioSync(long newSamplePos) {
 		int deltaPos = (int) (newSamplePos - samplePos);

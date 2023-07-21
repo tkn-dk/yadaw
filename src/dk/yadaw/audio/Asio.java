@@ -138,7 +138,6 @@ public class Asio {
 			System.out.println("ASIO Buffer error");
 			return false;
 		}
-		;
 
 		isStarted = false;
 		isStopped = false;
@@ -157,7 +156,7 @@ public class Asio {
 							}
 						}
 						if (!allOutputsReady) {
-							outputLock.wait( 10 );
+							outputLock.wait(10);
 						}
 					} catch (InterruptedException e) {
 						System.out.println("Asio Interrupted waiting for outputLock! ");
@@ -217,12 +216,21 @@ public class Asio {
 			xService.shutdown();
 			asioStop();
 			System.out.println("Asio thread done");
+			notify();
 		}
 		return true;
 	}
 
 	public void stop() {
-		isStopped = true;
+		synchronized (this) {
+			isStopped = true;
+			try {
+				wait();
+			} catch (InterruptedException e) {
+				System.out.println("Asio stop wait interrupt");
+			}
+		}
+		System.out.println("Asio stop");
 	}
 
 	public long getSamplePos() {
@@ -267,6 +275,10 @@ public class Asio {
 		return nofActivatedOutputs;
 	}
 
+	public boolean isStarted() {
+		return isStarted;
+	}
+	
 	public Object getOutputLock() {
 		return outputLock;
 	}

@@ -18,6 +18,23 @@ import dk.yadaw.widgets.InputLabel;
  *
  */
 public class YadawDataModel {
+	public enum UIOperation { 
+		UI_ADD_TRACK,
+		UI_START,
+		UI_STOP,
+		UI_OPEN_ASIO 
+	};
+	
+	public enum DataItemID {
+		YADAW_ALL,
+		YADAW_ASIO_DRIVER_NAME,
+		YADAW_MIXER,
+		YADAW_ASIO,
+		YADAW_LABELFONT,
+		YADAW_TRACKCONTROLLER_ADD,
+		YADAW_UI_OPERATION
+	};
+	
 	private final int numSends = 2;
 	private Asio asio;
 	private String asioDriverName;
@@ -87,7 +104,7 @@ public class YadawDataModel {
 	
 	public void setAsio( Asio asio ) {
 		this.asio = asio;
-		queueDataEvent( new DataEvent( DataItemID.YADAW_ASIO, this.asio ));
+		queueDataEvent( new DataEvent( YadawDataModel.DataItemID.YADAW_ASIO, this.asio ));
 	}
 	
 	/**
@@ -132,8 +149,17 @@ public class YadawDataModel {
 		return mixerFont;
 	}
 	
+	public void setUIOperation( UIOperation op ) {
+		queueDataEvent( new DataEvent( DataItemID.YADAW_UI_OPERATION, op ));
+	}
+	
 	public Collection<TrackController> getTrackControllers() {
 		return trackControllers;
+	}
+	
+	public void addTrackController( TrackController tctrl ) {
+		trackControllers.add( tctrl );
+		queueDataEvent( new DataEvent( DataItemID.YADAW_TRACKCONTROLLER_ADD, tctrl ));
 	}
 	
 	public void mixerMouseClick( MouseEvent e, Object panelObject ) {

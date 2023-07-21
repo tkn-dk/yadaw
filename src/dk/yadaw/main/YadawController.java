@@ -1,11 +1,7 @@
 package dk.yadaw.main;
 
 import java.awt.Color;
-import java.awt.Font;
-import java.util.ArrayList;
 import java.util.Collection;
-
-import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
 import dk.yadaw.audio.Asio;
@@ -15,7 +11,6 @@ import dk.yadaw.audio.Mixer;
 import dk.yadaw.audio.MixerChannel;
 import dk.yadaw.audio.SyncListener;
 import dk.yadaw.datamodel.DataEvent;
-import dk.yadaw.datamodel.DataItemID;
 import dk.yadaw.datamodel.DataModelInstance;
 import dk.yadaw.datamodel.DataModelUpdateListenerIf;
 import dk.yadaw.datamodel.YadawDataModel;
@@ -23,6 +18,7 @@ import dk.yadaw.widgets.TrackPanel;
 
 /**
  * Controller for Yadaw.
+ * 
  * @author tkn
  *
  */
@@ -33,78 +29,45 @@ public class YadawController implements DataModelUpdateListenerIf, SyncListener 
 	private Asio asio;
 	private Mixer mixer;
 	Collection<TrackController> trackControllers;
-	
+	private int nextTrackNumber;
+
 	public YadawController() {
 		yaModel = DataModelInstance.getModelInstance();
-		yaModel.addUpdateListener( DataItemID.YADAW_ALL, this );
-		asio = yaModel.getAsio();
-		trackControllers = yaModel.getTrackControllers();
-		SwingUtilities.invokeLater( new Runnable() {
+		yaModel.addUpdateListener(YadawDataModel.DataItemID.YADAW_ALL, this);
+		SwingUtilities.invokeLater(new Runnable() {
 
 			@Override
 			public void run() {
 				yaFrame = new YadawFrame();
 			}
-			
+
 		});
-		
+
 		soundThread = new Thread() {
 			@Override
 			public void run() {
-				if( !asio.start() ) {
-					System.out.println( "Asio start error ");
+				if (!asio.start()) {
+					System.out.println("Asio start error ");
 					return;
-				}				
-			}			
+				}
+			}
 		};
 	}
-	
-	private void setupMixer() {
-		mixer = new Mixer( asio.getOutputLock() );
-		yaModel.setMixer(mixer);
-		mixer.setMaster( new AudioStream( "master L"), new AudioStream( "master R"));
-		
-		if( asio.connectInput(0, mixer.getMasterLeft()) ) {
-			System.out.println( "Left connect" );
+
+	private void connectMixer() {
+
+		if (asio.connectInput(0, mixer.getMasterLeft())) {
+			System.out.println("Left connect");
 		}
-		else {
+
+		if (asio.connectInput(1, mixer.getMasterRight())) {
+			System.out.println("Right connect");
+		} else {
 			return;
 		}
-		
-		if( asio.connectInput(1, mixer.getMasterRight()) ) {
-			System.out.println( "Right connect");
-		}
-		else {
-			return;
-		}
-		
-		yaFrame.newConsolidatedPanel();
-		
-		Color[] trackColors = new Color[] { Color.RED, Color.GREEN, Color.ORANGE, Color.YELLOW };
-		for( int ch = 0; ch < 4; ch++ ) {
-			String label = "IN" + (ch+1);
-			MixerChannel mxc = new MixerChannel( label, ch, yaModel.getNumSends());
-			mixer.addChannel( mxc );
-			TrackPanel tp =  new TrackPanel( label, trackColors[ch], ch + 1, yaModel.getMixerFont());
-			trackControllers.add( new TrackController( yaFrame, label, mxc, tp ));
-			yaFrame.addConsolidatedPanel(tp);
-		}
-		
-		yaFrame.commitConsolidatedPanels();
+
 		setPlaybackAndRecording();
-		
-		/*AudioTrack track = new AudioTrack();
-		AudioStream playStream = new AudioStream();
-		asio.connectInput(0, playStream);
-		track.setOutput(playStream);
-		try {
-			track.playbackStart( "IN1.raw");
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		*/
 		asio.setSyncListener(this);
-		
 		soundThread.start();
 	}
 
@@ -115,7 +78,7 @@ public class YadawController implements DataModelUpdateListenerIf, SyncListener 
 			System.out.println( "Opening: " + yaModel.getAsioDriverName() );
 			try {
 				asio.openDriver( yaModel.getAsioDriverName() );
-				setupMixer();				
+				connectMixer();				
 			} catch (AsioException e) {
 				e.printStackTrace();
 			}
@@ -124,6 +87,18 @@ public class YadawController implements DataModelUpdateListenerIf, SyncListener 
 		case YADAW_ASIO:
 			System.out.println( "Datamodel asio update");
 			asio = yaModel.getAsio();
+			mixer = new Mixer( asio.getOutputLock() );
+			mixer.setMaster( new AudioStream( "master L"), new AudioStream( "master R"));
+			yaModel.setMixer(mixer);
+			trackControllers = yaModel.getTrackControllers();
+			break;
+			
+		case YADAW_TRACKCONTROLLER_ADD:
+			System.out.println( "DataModel trackController added");
+			break;
+			
+		case YADAW_UI_OPERATION:
+			handleUIOperation( ( YadawDataModel.UIOperation )dEvent.getDataItem() );
 			break;
 			
 		default:
@@ -131,24 +106,45 @@ public class YadawController implements DataModelUpdateListenerIf, SyncListener 
 		}
 
 	}
-	
-	
+
+	private void handleUIOperation(YadawDataModel.UIOperation op) {
+		switch (op) {
+		case UI_ADD_TRACK:
+			addTrack();
+			break;
+
+		default:
+			break;
+
+		}
+	}
+
+	private void addTrack() {
+		yaFrame.newConsolidatedPanel();
+		String label = "TRACK" + nextTrackNumber++;
+		MixerChannel mxc = new MixerChannel(label, 0, yaModel.getNumSends());
+		mixer.addChannel(mxc);
+		TrackPanel tp = new TrackPanel(label, new Color(128, 128, 128), 1, yaModel.getMixerFont());
+		yaModel.addTrackController(new TrackController(yaFrame, label, mxc, tp));
+		yaFrame.addConsolidatedPanel(tp);
+		yaFrame.commitConsolidatedPanels();
+	}
+
 	private void setPlaybackAndRecording() {
 		int ch = 0;
-		for( TrackController tc : trackControllers ) {
-			tc.setPlaybackOrRecord( asio );
-			if( tc.isRecording() ) {
-				System.out.println( "Record on " + tc.getMixerChannel().getLabel() );
+		for (TrackController tc : trackControllers) {
+			tc.setPlaybackOrRecord(asio);
+			if (tc.isRecording()) {
+				System.out.println("Record on " + tc.getMixerChannel().getLabel());
 				MixerChannel mxc = tc.getMixerChannel();
-				if( asio.connectOutput( ch, mxc.getIn() )) {
-					System.out.println( "Mixer channel " + mxc.getLabel() + " connected to ASIO output stream (analog in)");
+				if (asio.connectOutput(ch, mxc.getIn())) {
+					System.out.println(
+							"Mixer channel " + mxc.getLabel() + " connected to ASIO output stream (analog in)");
+				} else {
+					System.out.println("ASIO output connect error");
 				}
-				else {
-					System.out.println( "ASIO output connect error");
-				}			
-			}
-			else {
-				System.out.println( "Playback on " + tc.getMixerChannel().getLabel() );
+			} else {
+				System.out.println("Playback on " + tc.getMixerChannel().getLabel());
 			}
 
 		}
@@ -156,10 +152,10 @@ public class YadawController implements DataModelUpdateListenerIf, SyncListener 
 
 	@Override
 	public void audioSync(long samplePos) {
-		for( TrackController tc : trackControllers ) {
+		for (TrackController tc : trackControllers) {
 			tc.audioSync(samplePos);
 		}
 		mixer.audioSync(samplePos);
 	}
-	
+
 }
