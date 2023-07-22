@@ -20,7 +20,7 @@ public class TrackPanel extends JPanel {
 	private VUMeter vuIn;
 	private VUMeter vuOutLeft;
 	private VUMeter vuOutRight;
-	private InputPanel inPanel;
+	private InputPanel inputPanel;
 	private TrackView trackView;
 	private Collection<Component> panelComponents;
 	private String trackName;
@@ -51,13 +51,13 @@ public class TrackPanel extends JPanel {
 		vuOutLeft = new VUMeter(8, 60, "L");
 		vuOutRight = new VUMeter(8, 60, "R");
 
-		inPanel = new InputPanel(trackName, trackColor, font, inputChannel);
+		inputPanel = new InputPanel(trackName, trackColor, font, inputChannel);
 
 		trackView = new TrackView(60, trackColor);
 
 		setLayout(new FlowLayout());
 
-		panelComponents.add(inPanel);
+		panelComponents.add(inputPanel);
 		panelComponents.add(vuIn);
 		panelComponents.add(trackView);
 		panelComponents.add(send1);
@@ -75,7 +75,7 @@ public class TrackPanel extends JPanel {
 
 	public void resizeTrackView() {
 		int pWidth = getWidth();
-		int tvWidth = pWidth - 70;
+		int tvWidth = pWidth - 60;
 		for (Component c : panelComponents) {
 			if (c != trackView) {
 				tvWidth -= c.getWidth();
@@ -88,7 +88,7 @@ public class TrackPanel extends JPanel {
 
 	public void setTrackName(String name) {
 		this.trackName = name;
-		inPanel.setTrackName( name );
+		inputPanel.setTrackName(name);
 	}
 
 	public String getTrackName() {
@@ -108,7 +108,7 @@ public class TrackPanel extends JPanel {
 	}
 
 	public boolean getRecordState() {
-		return inPanel.getRecordButton().getRecordState();
+		return inputPanel.getRecordButton().getRecordState();
 	}
 
 	public Potentiometer getVolume() {
@@ -124,7 +124,7 @@ public class TrackPanel extends JPanel {
 	}
 
 	public InputPanel getInputPanel() {
-		return inPanel;
+		return inputPanel;
 	}
 
 	public Color getTrackColor() {
@@ -133,7 +133,7 @@ public class TrackPanel extends JPanel {
 
 	public void setTrackColor(Color newColor) {
 		trackColor = newColor;
-		inPanel.setTrackColor(newColor);
+		inputPanel.setTrackColor(newColor);
 		trackView.setTrackColor(newColor);
 	}
 
