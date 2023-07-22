@@ -1,7 +1,10 @@
 package dk.yadaw.main;
 
+import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.GridLayout;
+import java.awt.Insets;
+import java.awt.Rectangle;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -14,6 +17,9 @@ import javax.swing.JFrame;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.ScrollPaneLayout;
 import javax.swing.SwingUtilities;
 
 import dk.yadaw.datamodel.DataModelInstance;
@@ -27,12 +33,20 @@ public class YadawFrame extends JFrame {
 	private ArrayList<TrackPanel> trackPanels;
 	private ArrayList<TrackPanel> consolidatedPanelAdditions;
 	private YadawDataModel model;
+	private JScrollPane scrollPane;
+	private JPanel mixerPanel;
 
 	public YadawFrame() {
 		super("Yadaw");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setExtendedState(JFrame.NORMAL);
-		setLayout(new GridLayout(0, 1));
+		Insets insets = getToolkit().getScreenInsets(getGraphicsConfiguration());
+		
+		setLayout( new BorderLayout());
+		
+		mixerPanel = new JPanel(new GridLayout(0, 1));
+		scrollPane = new JScrollPane(mixerPanel);
+		scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
 
 		trackPanels = new ArrayList<TrackPanel>();
 		consolidatedPanelAdditions = new ArrayList<TrackPanel>();
@@ -82,7 +96,7 @@ public class YadawFrame extends JFrame {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				System.out.println("Add track ");
-				model.setUIOperation( YadawDataModel.UIOperation.UI_ADD_TRACK);
+				model.setUIOperation(YadawDataModel.UIOperation.UI_ADD_TRACK);
 			}
 		});
 
@@ -91,7 +105,7 @@ public class YadawFrame extends JFrame {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				System.out.println("Start");
-				model.setUIOperation( YadawDataModel.UIOperation.UI_START);
+				model.setUIOperation(YadawDataModel.UIOperation.UI_START);
 			}
 		});
 
@@ -100,8 +114,8 @@ public class YadawFrame extends JFrame {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				System.out.println("Stop");
-				model.setUIOperation( YadawDataModel.UIOperation.UI_STOP);
-				
+				model.setUIOperation(YadawDataModel.UIOperation.UI_STOP);
+
 			}
 		});
 
@@ -113,18 +127,36 @@ public class YadawFrame extends JFrame {
 		menuBar.add(audioMenu);
 
 		setJMenuBar(menuBar);
-
-		sizeAndPlace(400, 300);
+		add(scrollPane);
+		setSize(new Dimension(400, 300));
+		setLocationRelativeTo(null);
 		setVisible(true);
 
 		addComponentListener(new ComponentAdapter() {
 
 			@Override
 			public void componentResized(ComponentEvent e) {
-				for (TrackPanel tp : trackPanels) {
-					tp.resizeTrackView();
-				}
 				super.componentResized(e);
+				if (e.getComponent() instanceof JFrame) {
+					JFrame frame = (JFrame) e.getComponent();
+	                
+					if( (frame.getExtendedState() & JFrame.MAXIMIZED_BOTH) == JFrame.MAXIMIZED_BOTH ) {
+						System.out.println( "Maximized");
+					} else {
+		                Insets ins =  Toolkit.getDefaultToolkit().getScreenInsets(getGraphicsConfiguration());
+		                Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
+		                Rectangle frameRect = frame.getBounds();
+		                int adjustY = screen.height - (frameRect.y + frameRect.height) - ins.bottom;
+		                if( adjustY < 0 ) {
+		                	frameRect.height += adjustY;
+		                	frame.setBounds(frameRect);
+		                }
+					}
+					
+					for (TrackPanel tp : trackPanels) {
+						tp.resizeTrackView();
+					}
+				}
 			}
 
 		});
@@ -140,15 +172,24 @@ public class YadawFrame extends JFrame {
 
 	public void commitConsolidatedPanels() {
 		SwingUtilities.invokeLater(() -> {
+			int maxWidth = 0;
+			int trackPanelHeight = 0;
 			for (TrackPanel tp : consolidatedPanelAdditions) {
 				trackPanels.add(tp);
-				add(tp);
+				mixerPanel.add(tp);
+				if( tp.getWidth() > maxWidth ) {
+					maxWidth = tp.getWidth();
+					trackPanelHeight = tp.getHeight();
+				}
 			}
+			mixerPanel.setSize( new Dimension( maxWidth, trackPanels.size() * trackPanelHeight));
+			mixerPanel.revalidate();
+//			Dimension dim = getSize();
+//			sizeAndPlace(dim.width, dim.height);
 			pack();
-			Dimension dim = getSize();
-			sizeAndPlace(dim.width, dim.height);
-			revalidate();
-			repaint();
+			setLocationRelativeTo(null);
+//			revalidate();
+//			repaint();
 		});
 	}
 
@@ -161,10 +202,4 @@ public class YadawFrame extends JFrame {
 		}
 	}
 
-	private void sizeAndPlace(int width, int height) {
-		Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-		int x = (screenSize.width - width) / 2;
-		int y = (screenSize.height - height) / 2;
-		setBounds(x, y, width, height);
-	}
 }
