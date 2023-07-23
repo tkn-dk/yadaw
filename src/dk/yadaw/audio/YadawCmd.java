@@ -161,18 +161,22 @@ public class YadawCmd implements SyncListener {
 	}
 
 	private void transferStreams() {
-		while( pTrackStream.available() > 0 ) {
-			int inSample = pTrackStream.read();
-			delayBuffer[dwp] = inSample;
-			dwp++;
-			if( dwp == delayBuffer.length )
-				dwp = 0;
-			int dSample = delayBuffer[drp++];
-			if( drp == delayBuffer.length )
-				drp = 0;
-			
-			pLeftStream.write( inSample );
-			pRightStream.write( inSample );
+		Object asioOutputLock = asio.getOutputLock();
+		synchronized (asioOutputLock) {
+			while (pTrackStream.available() > 0) {
+				int inSample = pTrackStream.read();
+				delayBuffer[dwp] = inSample;
+				dwp++;
+				if (dwp == delayBuffer.length)
+					dwp = 0;
+				int dSample = delayBuffer[drp++];
+				if (drp == delayBuffer.length)
+					drp = 0;
+
+				pLeftStream.write(inSample);
+				pRightStream.write(inSample);
+			}
+			asioOutputLock.notify();
 		}
 	}
 	

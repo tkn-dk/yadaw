@@ -119,6 +119,7 @@ public class Asio {
 	 * @return true on success.
 	 */
 	public boolean connectOutput(int ch, AudioStream outStream) {
+		System.out.println( "Asio: Connecting stream " + outStream + " to channel " + ch );
 		if (ch < outputStreams.length) {
 			inputStreams[ch] = outStream;
 			asioArmInput(ch);

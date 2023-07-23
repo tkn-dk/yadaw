@@ -20,8 +20,8 @@ import dk.yadaw.widgets.InputLabel;
 public class YadawDataModel {
 	public enum UIOperation { 
 		UI_ADD_TRACK,
-		UI_START,
-		UI_STOP,
+		UI_AUDIO_START,
+		UI_AUDIO_STOP,
 		UI_OPEN_ASIO 
 	};
 	

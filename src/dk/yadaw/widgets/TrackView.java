@@ -4,7 +4,6 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Graphics;
-import java.awt.Graphics2D;
 
 import javax.swing.SwingUtilities;
 
@@ -78,7 +77,6 @@ public class TrackView extends Component {
 			g.setColor(Color.BLACK);
 			while (x < width - 1 && pinx < trackPeaks.length) {
 				y = (int) ((halfHeight * ( double )trackPeaks[pinx++]) / 0x7fffffff);				
-//				g.drawLine(x, halfHeight - y, x, halfHeight + y);
 				g.fillRect(x, halfHeight - y, 1, 2 * y + 1);
 				x++;
 			}

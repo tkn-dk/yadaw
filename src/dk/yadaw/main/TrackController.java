@@ -1,6 +1,9 @@
 package dk.yadaw.main;
 
 import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.event.ComponentEvent;
+import java.awt.event.ComponentListener;
 import java.io.IOException;
 
 import javax.swing.JFrame;
@@ -9,7 +12,6 @@ import dk.yadaw.audio.Asio;
 import dk.yadaw.audio.AudioStream;
 import dk.yadaw.audio.AudioTrack;
 import dk.yadaw.audio.MixerChannel;
-import dk.yadaw.audio.SyncListener;
 import dk.yadaw.utils.TrackViewData;
 import dk.yadaw.widgets.Potentiometer;
 import dk.yadaw.widgets.PotentiometerListener;
@@ -25,19 +27,22 @@ import dk.yadaw.widgets.VUMeter;
  * @author tkn
  *
  */
-public class TrackController implements SyncListener, PotentiometerListener, TrackNameColorListener {
+public class TrackController implements PotentiometerListener, TrackNameColorListener {
+	private final int viewEndSamplePos = 2 * 60 * 48000;
 	private MixerChannel mixerChannel;
 	private TrackPanel trackPanel;
 	private AudioTrack audioTrack;
 	private long samplePos;
-	private AudioStream inStream;
-	private AudioStream trackSplit;
-	private AudioStream mixerSplit;
+	private AudioStream mixerInStream;
+	private AudioStream trackFileStream;
+	private AudioStream trackViewRecordStream;
+	private AudioStream recordingStream;
 	private String trackName;
 	private boolean isRecording;
 	private long lastPeakPos;
 	private TrackViewData trackViewData;
 	private JFrame owner;
+	private int bufferSize;
 
 	public TrackController(JFrame owner, String trackName, MixerChannel channel, TrackPanel panel) {
 		this.owner = owner;
@@ -45,45 +50,14 @@ public class TrackController implements SyncListener, PotentiometerListener, Tra
 		trackPanel = panel;
 		this.trackName = trackName;
 		audioTrack = new AudioTrack();
-		inStream = new AudioStream("TrackPanel " + trackName + " inStream ");
-		trackSplit = new AudioStream("TrackPanel " + trackName + " trackSplit ");
-		mixerSplit = new AudioStream("TrackPanel " + trackName + " mixerSplit ");
+		mixerInStream = new AudioStream("TrackPanel " + trackName + " inStream ");
+		trackFileStream = new AudioStream("TrackPanel " + trackName + " trackSplit ");
+		recordingStream = new AudioStream("TrackPanel " + trackName + "recordingMixerInStream");
+		trackViewRecordStream = new AudioStream("TrackPanel " + trackName + " trackViewRecordStream");
 		panel.getVolume().addPotentiometerListener(this);
 		panel.getPan().addPotentiometerListener(this);
-
-		trackViewData = new TrackViewData(trackName);
-		TrackView tView = trackPanel.getTrackView();
-		int viewEndPos = 2 * 60 * 48000; // Initially set to 4 minutes
-		tView.setViewWindow(0, viewEndPos);
-		long nofSamples = trackViewData.getNofSamples();
-		int[] trackPeaks = trackViewData.getPeakArray(0, nofSamples, viewEndPos / 800);
-		if (trackPeaks != null) {
-			tView.setTrackPeaks(0, nofSamples, trackPeaks);
-		}
-	}
-
-	public void setPlaybackOrRecord(Asio asio) {
-		isRecording = trackPanel.getRecordState();
-		mixerChannel.setIn(inStream);
-		if (isRecording) {
-			mixerChannel.setIn(mixerSplit);
-			audioTrack.setInput(trackSplit);
-			try {
-				audioTrack.recordStart(trackName + ".raw");
-			} catch (IOException e) {
-				System.out.println("Could not record to " + trackName);
-			}
-			inStream.addSyncListener(this);
-			asio.connectOutput(mixerChannel.getChannelNumber(), inStream);
-		} else {
-			audioTrack.setInput(null);
-			audioTrack.setOutput(inStream);
-			try {
-				audioTrack.playbackStart(trackName + ".raw", false);
-			} catch (IOException e) {
-				System.out.println("Could not playback from " + trackName);
-			}
-		}
+		trackViewData = new TrackViewData();
+		updateTrackView();
 	}
 
 	public boolean isRecording() {
@@ -103,7 +77,7 @@ public class TrackController implements SyncListener, PotentiometerListener, Tra
 	}
 
 	public AudioStream getInpuStream() {
-		return inStream;
+		return mixerInStream;
 	}
 
 	public String getTrackName() {
@@ -115,35 +89,78 @@ public class TrackController implements SyncListener, PotentiometerListener, Tra
 	}
 
 	public void inputLabelClick() {
-		TrackNameColorDlg tncDlg = new TrackNameColorDlg(owner, trackName, trackPanel.getTrackColor(), this);
+		new TrackNameColorDlg(owner, trackName, trackPanel.getTrackColor(), this);
 	}
 
-	@Override
-	public void audioSync(long newSamplePos) {
-		int deltaPos = (int) (newSamplePos - samplePos);
-		samplePos = newSamplePos;
+	public void setPlaybackOrRecord(Asio asio) {
+		isRecording = trackPanel.isRecording();
+		mixerChannel.setIn(mixerInStream);
+		bufferSize = asio.getBufferSize();
+
 		if (isRecording) {
-			for (int n = 0; n < deltaPos; n++) {
-				int sample = inStream.read();
-				trackSplit.write(sample);
-				mixerSplit.write(sample);
+			audioTrack.setInput(trackFileStream);
+			int trackViewWidth = trackPanel.getTrackView().getWidth();
+			if (trackViewWidth > 0) {
+				trackViewData.setPeakWindow(0, 0, viewEndSamplePos / trackViewWidth);
+				trackViewData.setRecordStream(trackViewRecordStream);
+			} else {
+				System.out.println("TrackController.setPlaybackOrRecord - Error: trackViewWidth is 0");
 			}
 
-			trackSplit.sync(newSamplePos);
-			mixerSplit.sync(newSamplePos);
+			try {
+				audioTrack.recordStart(trackName + ".raw");
+			} catch (IOException e) {
+				System.out.println("Could not record to " + trackName);
+			}
+			asio.connectOutput(mixerChannel.getChannelNumber(), recordingStream);
 		} else {
-			inStream.sync(newSamplePos);
+			audioTrack.setInput(null);
+			audioTrack.setOutput(mixerInStream);
+			try {
+				audioTrack.playbackStart(trackName + ".raw", false);
+			} catch (IOException e) {
+				System.out.println("Could not playback from " + trackName);
+			}
+		}
+	}
+
+	public void trackSync(long newSamplePos) {
+		int deltaPos = (int) (newSamplePos - samplePos);
+		samplePos = newSamplePos;
+		recordingStream.sync(newSamplePos);
+		
+		if (isRecording) {
+			int toRead = Math.min(deltaPos, 8 * bufferSize);
+			while (!recordingStream.isEmpty() && toRead > 0) {
+				int sample = recordingStream.read();
+				mixerInStream.write(sample);
+				trackFileStream.write(sample);
+				trackViewRecordStream.write(sample);
+				toRead--;
+			}
+
+			mixerChannel.audioSync(newSamplePos);
+			trackViewData.recordAudioSync(newSamplePos);
+			audioTrack.audioSync(newSamplePos);
+
+			trackFileStream.sync(newSamplePos);
+			trackViewRecordStream.sync(newSamplePos);
+		} else {
 			audioTrack.audioSync(newSamplePos);
 			mixerChannel.audioSync(newSamplePos);
 		}
+		mixerInStream.sync(newSamplePos);
 
 		// VU meter update
 		int deltaPeakPos = (int) (newSamplePos - lastPeakPos);
 		if (deltaPeakPos > 2400) {
-			vuUpdate(inStream, trackPanel.getInVUMeter(), deltaPeakPos);
+			vuUpdate(mixerInStream, trackPanel.getInVUMeter(), deltaPeakPos);
 			vuUpdate(mixerChannel.getMasterLeft(), trackPanel.getOutLeftVUMeter(), deltaPeakPos);
 			vuUpdate(mixerChannel.getMasterRight(), trackPanel.getOutRightVUMeter(), deltaPeakPos);
 
+			if (trackPanel.isRecording()) {
+				trackPanel.getTrackView().setTrackPeaks(0, newSamplePos, trackViewData.getPeakArray());
+			}
 			trackPanel.getTrackView().setSamplePos(newSamplePos);
 			lastPeakPos = newSamplePos;
 		}
@@ -186,6 +203,24 @@ public class TrackController implements SyncListener, PotentiometerListener, Tra
 
 	@Override
 	public void trackNameUpdated(String newName) {
+		trackName = newName;
 		trackPanel.setTrackName(newName);
+		updateTrackView();
+	}
+
+	private void updateTrackView() {
+		TrackView tView = trackPanel.getTrackView();
+		Dimension viewDim = tView.getPreferredSize();
+		int trackViewWidth = viewDim.width;
+		tView.setViewWindow(0, viewEndSamplePos);
+
+		long nofSamples = trackViewData.getNofSamples(trackName);
+		trackViewData.setPeakWindow(0, nofSamples, viewEndSamplePos / trackViewWidth);
+		if (trackViewData.loadTrackFile(trackName)) {
+			int[] trackPeaks = trackViewData.getPeakArray();
+			System.out.println("TrackController - trackPeaks: " + trackPeaks.length);
+			tView.setTrackPeaks(0, nofSamples, trackPeaks);
+		}
+
 	}
 }

@@ -71,7 +71,7 @@ public class RecordButton extends Component implements MouseListener {
 		
 	}
 	
-	public boolean getRecordState() {
+	public boolean isRecording() {
 		return record;
 	}
 

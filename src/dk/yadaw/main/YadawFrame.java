@@ -105,7 +105,7 @@ public class YadawFrame extends JFrame {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				System.out.println("Start");
-				model.setUIOperation(YadawDataModel.UIOperation.UI_START);
+				model.setUIOperation(YadawDataModel.UIOperation.UI_AUDIO_START);
 			}
 		});
 
@@ -114,7 +114,7 @@ public class YadawFrame extends JFrame {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				System.out.println("Stop");
-				model.setUIOperation(YadawDataModel.UIOperation.UI_STOP);
+				model.setUIOperation(YadawDataModel.UIOperation.UI_AUDIO_STOP);
 
 			}
 		});

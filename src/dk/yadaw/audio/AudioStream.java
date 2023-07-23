@@ -1,10 +1,11 @@
 package dk.yadaw.audio;
 
-import java.util.HashSet;
-import java.util.Set;
-
 /**
- * Represents an audio stream.
+ * @author tkn@korsdal.dk
+ * Represents an audio stream as a circular buffer with a commit pointer (cptr).
+ * The commit pointer is used to keep the samples in the buffer until they are
+ * released by calling AudioStream.sync() with the current sample positions.
+ * This enables calculation of peak value for VU meter readout in sync with the stream. 
  */
 public class AudioStream {
 	private String label;
@@ -13,7 +14,6 @@ public class AudioStream {
 	private int wptr;
 	private int rptr;
 	private int cptr;
-	private Set<SyncListener> syncListeners;
 	private boolean writeTransferCompleted;
 	
 	public AudioStream( String label ) {
@@ -27,7 +27,6 @@ public class AudioStream {
 
 	public AudioStream( int bufferSize ) {
 		buffer = new int[bufferSize];
-		syncListeners = new HashSet<SyncListener>();
 		label = "none";
 	}
 	
@@ -54,6 +53,7 @@ public class AudioStream {
 			wptr = nextWb;
 			return true;
 		}
+		System.out.println( label + " write overflow");
 		return false;
 	}
 	
@@ -115,10 +115,6 @@ public class AudioStream {
 		return peak;
 	}
 	
-	public void addSyncListener( SyncListener sl ) {
-		syncListeners.add(sl);
-	}
-	
 	public void sync( long newSamplePos ) {
 		long releasedSamples = newSamplePos - samplePos;
 		int committedSamples = ( wptr >= cptr ) ? wptr - cptr : buffer.length - cptr + wptr;
@@ -132,10 +128,6 @@ public class AudioStream {
 		} else {
 			cptr = wptr;
 			samplePos = newSamplePos;
-		}
-
-		for (SyncListener s : syncListeners) {
-			s.audioSync(newSamplePos);
 		}
 	}
 	

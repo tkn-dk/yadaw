@@ -54,53 +54,43 @@ public class YadawController implements DataModelUpdateListenerIf, SyncListener 
 		};
 	}
 
-	private void connectMixer() {
-
-		if (asio.connectInput(0, mixer.getMasterLeft())) {
-			System.out.println("Left connect");
+	@Override
+	public void audioSync(long samplePos) {
+		for (TrackController tc : trackControllers) {
+			tc.trackSync(samplePos);
 		}
-
-		if (asio.connectInput(1, mixer.getMasterRight())) {
-			System.out.println("Right connect");
-		} else {
-			return;
-		}
-
-		setPlaybackAndRecording();
-		asio.setSyncListener(this);
-		soundThread.start();
+		mixer.audioSync(samplePos);
 	}
 
 	@Override
-	public void dataItemUpdated( DataEvent dEvent ) {
-		switch( dEvent.getID() ) {
+	public void dataItemUpdated(DataEvent dEvent) {
+		switch (dEvent.getID()) {
 		case YADAW_ASIO_DRIVER_NAME:
-			System.out.println( "Opening: " + yaModel.getAsioDriverName() );
+			System.out.println("Opening: " + yaModel.getAsioDriverName());
 			try {
-				asio.openDriver( yaModel.getAsioDriverName() );
-				connectMixer();				
+				asio.openDriver(yaModel.getAsioDriverName());
 			} catch (AsioException e) {
 				e.printStackTrace();
 			}
 			break;
-			
+
 		case YADAW_ASIO:
-			System.out.println( "Datamodel asio update");
+			System.out.println("Datamodel asio update");
 			asio = yaModel.getAsio();
-			mixer = new Mixer( asio.getOutputLock() );
-			mixer.setMaster( new AudioStream( "master L"), new AudioStream( "master R"));
+			mixer = new Mixer(asio.getOutputLock());
+			mixer.setMaster(new AudioStream("master L"), new AudioStream("master R"));
 			yaModel.setMixer(mixer);
 			trackControllers = yaModel.getTrackControllers();
 			break;
-			
+
 		case YADAW_TRACKCONTROLLER_ADD:
-			System.out.println( "DataModel trackController added");
+			System.out.println("DataModel trackController added");
 			break;
-			
+
 		case YADAW_UI_OPERATION:
-			handleUIOperation( ( YadawDataModel.UIOperation )dEvent.getDataItem() );
+			handleUIOperation((YadawDataModel.UIOperation) dEvent.getDataItem());
 			break;
-			
+
 		default:
 			break;
 		}
@@ -111,6 +101,14 @@ public class YadawController implements DataModelUpdateListenerIf, SyncListener 
 		switch (op) {
 		case UI_ADD_TRACK:
 			addTrack();
+			break;
+
+		case UI_AUDIO_START:
+			audioStart();
+			break;
+
+		case UI_AUDIO_STOP:
+			audioStop();
 			break;
 
 		default:
@@ -130,32 +128,34 @@ public class YadawController implements DataModelUpdateListenerIf, SyncListener 
 		yaFrame.commitConsolidatedPanels();
 	}
 
-	private void setPlaybackAndRecording() {
-		int ch = 0;
-		for (TrackController tc : trackControllers) {
-			tc.setPlaybackOrRecord(asio);
-			if (tc.isRecording()) {
-				System.out.println("Record on " + tc.getMixerChannel().getLabel());
-				MixerChannel mxc = tc.getMixerChannel();
-				if (asio.connectOutput(ch, mxc.getIn())) {
-					System.out.println(
-							"Mixer channel " + mxc.getLabel() + " connected to ASIO output stream (analog in)");
-				} else {
-					System.out.println("ASIO output connect error");
-				}
-			} else {
-				System.out.println("Playback on " + tc.getMixerChannel().getLabel());
+	private void audioStart() {
+		if (!asio.isStarted()) {
+			if (asio.connectInput(0, mixer.getMasterLeft())) {
+				System.out.println("Left connect");
 			}
 
+			if (asio.connectInput(1, mixer.getMasterRight())) {
+				System.out.println("Right connect");
+			} else {
+				return;
+			}
+
+			setPlaybackAndRecording();
+			asio.setSyncListener(this);
+			soundThread.start();
 		}
 	}
 
-	@Override
-	public void audioSync(long samplePos) {
-		for (TrackController tc : trackControllers) {
-			tc.audioSync(samplePos);
+	private void audioStop() {
+		if (asio.isStarted()) {
+			asio.stop();
 		}
-		mixer.audioSync(samplePos);
+	}
+
+	private void setPlaybackAndRecording() {
+		for (TrackController tc : trackControllers) {
+			tc.setPlaybackOrRecord(asio);
+		}
 	}
 
 }

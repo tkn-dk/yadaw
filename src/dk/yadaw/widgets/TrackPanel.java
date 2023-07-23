@@ -107,10 +107,6 @@ public class TrackPanel extends JPanel {
 		return vuOutRight;
 	}
 
-	public boolean getRecordState() {
-		return inputPanel.getRecordButton().getRecordState();
-	}
-
 	public Potentiometer getVolume() {
 		return volume;
 	}
@@ -135,6 +131,10 @@ public class TrackPanel extends JPanel {
 		trackColor = newColor;
 		inputPanel.setTrackColor(newColor);
 		trackView.setTrackColor(newColor);
+	}
+	
+	public boolean isRecording() {
+		return inputPanel.getRecordButton().isRecording();
 	}
 
 }
